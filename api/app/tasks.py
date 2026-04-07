@@ -1,5 +1,7 @@
 import json
 import logging
+import os
+import subprocess
 import time
 
 from app.config import COMPUTE_TYPE, DEVICE, WHISPER_MODEL
@@ -31,6 +33,16 @@ async def transcribe_audio(ctx: dict, task_id: str, file_path: str, model_id: st
 
     try:
         start_time = time.time()
+
+        # 非 wav/mp3/flac 格式先用 ffmpeg 轉成 wav
+        if not file_path.lower().endswith((".wav", ".mp3", ".flac")):
+            wav_path = file_path.rsplit(".", 1)[0] + ".wav"
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", file_path, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", wav_path],
+                capture_output=True, check=True,
+            )
+            os.remove(file_path)
+            file_path = wav_path
 
         segments_gen, info = model.transcribe(
             file_path,
