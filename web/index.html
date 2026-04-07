@@ -580,6 +580,11 @@ async function startRecording() {
     mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
     mediaRecorder.onstop = () => {
       stream.getTracks().forEach(t => t.stop());
+      const duration = (Date.now() - recStartTime) / 1000;
+      if (duration < 1) {
+        document.getElementById('recHint').textContent = '錄音太短（至少 1 秒），請重試';
+        return;
+      }
       const ext = mediaRecorder.mimeType.includes('webm') ? 'webm' : 'mp4';
       const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
       const file = new File([blob], `recording_${Date.now()}.${ext}`, { type: mediaRecorder.mimeType });

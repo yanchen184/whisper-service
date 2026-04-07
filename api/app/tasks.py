@@ -37,10 +37,14 @@ async def transcribe_audio(ctx: dict, task_id: str, file_path: str, model_id: st
         # 非 wav/mp3/flac 格式先用 ffmpeg 轉成 wav
         if not file_path.lower().endswith((".wav", ".mp3", ".flac")):
             wav_path = file_path.rsplit(".", 1)[0] + ".wav"
-            subprocess.run(
+            result = subprocess.run(
                 ["ffmpeg", "-y", "-i", file_path, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", wav_path],
-                capture_output=True, check=True,
+                capture_output=True,
             )
+            if result.returncode != 0:
+                stderr = result.stderr.decode(errors="replace")
+                logger.error("ffmpeg failed (exit %d): %s", result.returncode, stderr[-500:])
+                raise RuntimeError(f"ffmpeg conversion failed: {stderr[-200:]}")
             os.remove(file_path)
             file_path = wav_path
 
