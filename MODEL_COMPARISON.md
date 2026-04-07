@@ -34,6 +34,30 @@
 
 > **注意**：OpenAI 已停止開發新 Whisper 模型，large-v3-turbo（2024/10）為最後版本。
 
+### MediaTek Research Breeze ASR 25
+
+| 項目 | 說明 |
+|------|------|
+| 來源 | 聯發科研究院（MediaTek Research） |
+| 架構 | 基於 Whisper large-v2 微調 |
+| 參數量 | 1.54B（與 large-v2 相同） |
+| 檔案大小 | 3.1 GB |
+| 授權 | Apache 2.0（商用友好） |
+| 強項 | **台灣華語、中英 code-switching** |
+| 格式 | PyTorch / faster-whisper / whisper.cpp / ONNX |
+
+**論文 Benchmark（WER，越低越好）**
+
+| 資料集 | 場景 | Whisper large-v2 | Whisper large-v3 | Breeze ASR 25 |
+|--------|------|-----------------|-----------------|---------------|
+| CommonVoice16-zh-TW | 台灣華語 | 9.84 | 8.95 | **7.97 (-19%)** |
+| CSZS-zh-en | 中英混合 | 29.49 | 26.43 | **13.01 (-56%)** |
+| ASCEND-MIX | 中英混合 | 21.01 | 25.13 | **16.38 (-22%)** |
+| ASCEND-ZH | 中文 | 17.49 | 17.41 | **16.04 (-8%)** |
+| ML-lecture-2021-long | 中文長音檔 | 6.13 | 6.41 | **4.98 (-19%)** |
+
+> Breeze ASR 25 在台灣華語和中英 code-switching 場景大幅領先，尤其 CSZS 中英混合改善 56%。但純英文術語辨識不如 large-v2（見實測結果）。
+
 ### OpenAI 付費 API 模型
 
 | 模型 | WER | 價格 | 特色 |
@@ -48,39 +72,49 @@
 ## 三、我們的 Demo 實測結果
 
 ### 測試內容：K8s 技術教學影片（中英混用）
+### 測試環境：Apple M2 / 8GB RAM / macOS 13.3
 
-### 3.1 短音頻測試（9.8 秒）
+### 3.1 速度比較（9.8 秒短片）
 
-| 項目 | medium | large-v2 |
-|------|--------|----------|
-| 轉錄耗時 | **4.2s** | 7.4s |
-| 速度比 | 2.3x 即時 | 1.3x 即時 |
+| 項目 | Base | Medium | Large-v2 | Breeze ASR 25 |
+|------|------|--------|----------|---------------|
+| 轉錄耗時 | **3.7s** | 4.2s | 7.4s | 267s（CPU, 含模型載入） |
+| 速度比 | **2.7x** | 2.3x | 1.3x | 0.04x（需 GPU 加速） |
+| 引擎 | faster-whisper | whisper.cpp | whisper.cpp | faster-whisper |
 
-### 3.2 長音頻測試（5 分 14 秒）
+### 3.2 長音頻測試（5 分 14 秒，whisper.cpp）
 
 | 項目 | medium | large-v2 |
 |------|--------|----------|
 | 轉錄耗時 | **48s** | ~90s |
 | 速度比 | **6.5x 即時** | ~3.5x 即時 |
 
-### 3.3 英文技術術語辨識（關鍵差異）
+### 3.3 逐句比較（9.8 秒短片，4 個模型）
 
-| 原詞 | medium 辨識 | large-v2 辨識 |
-|------|------------|--------------|
-| Worker | Walker ❌ | **Worker** ✅ |
-| Docker | Dock ❌ | **Docker** ✅ |
-| kubectl | Cube Control ❌ | **Kubectl** ✅ |
-| Minikube | MiniCube ❌ | **Minicube** ✅ |
-| Ubuntu | 與幫助 ❌ | **Ubuntu** ✅ |
-| Kubelet | Cubelet ❌ | **Kubelet** ✅ |
-| Scheduler | Schedule ❌ | **Scheduler** ✅ |
-| 映像檔 | 印象檔 ❌ | **映像檔** ✅ |
-| 叢集 (cluster) | 重機 ❌ | 重機 ❌ |
-| Pod | Part ❌ | Part ❌ |
+| 時段 | Base | Medium | Large-v2 | Breeze ASR 25 |
+|------|------|--------|----------|---------------|
+| 0-2s（上一支影片我們已經裝好了 Minikube） | 上支影片我們已經裝好的mini-cube | 上支影片我們已經裝好了MiniCube | 上**一**支影片我們已經裝好了mini cube | 上支影片我們已經裝好了 minicube |
+| 2-5s（用 kubectl get nodes 確認叢集在跑） | 用cube get notes 確認從機在跑 | 用CookGadnotes確認重機在跑 | 用quick get nodes 確認重機在跑 | 用 cook get nodes 確認蟲姬在 pop |
+| 5-7s（用這個 kubectl...） | 用這個cube | 用這個Cook... | 用這個quick... | 用這個 cook |
+| 8-10s（我根本沒講這個喔） | 好 有段迷講這個 | **我根本沒講這個喔** ✅ | 有份沒講這個喔 | 靠 有份沒講這個喔 |
 
-> **結論**：large-v2 在英文技術術語辨識上**大幅領先** medium，但「叢集」「Pod」等詞兩者皆錯，需後處理修正。
+### 3.4 英文技術術語辨識（4 模型比較）
 
-### 3.4 中文語句品質
+| 原詞 | Base | Medium | Large-v2 | Breeze ASR 25 |
+|------|------|--------|----------|---------------|
+| Minikube | mini-cube | MiniCube | **Minicube** ✅ | minicube |
+| kubectl | cube | Cook | quick | cook |
+| 叢集 (cluster) | 從機 | 重機 | 重機 | 蟲姬 |
+| Worker | — | Walker ❌ | **Worker** ✅ | — |
+| Docker | — | Dock ❌ | **Docker** ✅ | — |
+| Ubuntu | — | 與幫助 ❌ | **Ubuntu** ✅ | — |
+| 映像檔 | — | 印象檔 ❌ | **映像檔** ✅ | — |
+
+> **結論**：在這段高密度英文術語的短片中，**large-v2 的英文術語辨識仍然最佳**。Breeze ASR 25 在此場景未展現優勢 — 其強項在台灣華語長對話和自然的中英 code-switching（論文 benchmark 改善 56%），而非密集英文術語。
+>
+> **建議**：技術內容用 large-v2，一般中文對話用 Breeze ASR 25，兩者互補。所有模型對「叢集」「kubectl」等詞皆需後處理修正。
+
+### 3.5 中文語句品質
 
 | 面向 | medium | large-v2 |
 |------|--------|----------|

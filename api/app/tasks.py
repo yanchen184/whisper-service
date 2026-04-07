@@ -16,6 +16,7 @@ AVAILABLE_MODELS = [
     {"id": "large-v2", "name": "Large-v2", "size": "2.9 GB", "speed": "慢", "quality": "很好"},
     {"id": "large-v3", "name": "Large-v3", "size": "2.9 GB", "speed": "慢", "quality": "最佳（有幻覺風險）"},
     {"id": "large-v3-turbo", "name": "Large-v3 Turbo", "size": "1.6 GB", "speed": "快", "quality": "很好"},
+    {"id": "phate334/Breeze-ASR-25-ct2", "name": "Breeze ASR 25 (聯發科)", "size": "3.1 GB", "speed": "慢", "quality": "中英混用最佳"},
 ]
 
 
