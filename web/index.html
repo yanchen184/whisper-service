@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Whisper 語音轉文字</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; display: flex; justify-content: center; padding: 2rem; }
+  .container { max-width: 900px; width: 100%; }
+  h1 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+  .subtitle { color: #94a3b8; margin-bottom: 1.5rem; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 2px solid #334155; }
+  .tab { padding: 0.75rem 1.5rem; cursor: pointer; color: #94a3b8; font-weight: 600; font-size: 0.95rem; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; }
+  .tab:hover { color: #e2e8f0; }
+  .tab.active { color: #3b82f6; border-bottom-color: #3b82f6; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* Tool page */
+  .drop-zone { border: 2px dashed #475569; border-radius: 12px; padding: 3rem; text-align: center; cursor: pointer; transition: all 0.2s; }
+  .drop-zone:hover, .drop-zone.dragover { border-color: #3b82f6; background: #1e293b; }
+  .drop-zone p { color: #94a3b8; margin-top: 0.5rem; font-size: 0.9rem; }
+  .drop-zone .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+  input[type="file"] { display: none; }
+
+  .status-card { background: #1e293b; border-radius: 12px; padding: 1.5rem; margin-top: 1.5rem; display: none; }
+  .status-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; }
+  .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; }
+  .badge-queued { background: #854d0e; color: #fef08a; }
+  .badge-processing { background: #1e40af; color: #93c5fd; }
+  .badge-completed { background: #166534; color: #86efac; }
+  .badge-failed { background: #991b1b; color: #fca5a5; }
+
+  .progress-bar { background: #334155; border-radius: 9999px; height: 8px; overflow: hidden; margin-bottom: 1rem; }
+  .progress-fill { background: linear-gradient(90deg, #3b82f6, #8b5cf6); height: 100%; border-radius: 9999px; transition: width 0.3s; width: 0%; }
+
+  .result-area { margin-top: 1rem; }
+  .result-text { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1rem; max-height: 400px; overflow-y: auto; white-space: pre-wrap; line-height: 1.8; font-size: 0.95rem; }
+  .result-meta { color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.75rem; }
+
+  .download-btns { display: flex; gap: 0.5rem; margin-top: 1rem; }
+  .btn { padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; }
+  .btn-primary { background: #3b82f6; color: white; }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-outline { background: transparent; border: 1px solid #475569; color: #e2e8f0; }
+  .btn-outline:hover { background: #1e293b; }
+
+  .error-msg { color: #fca5a5; margin-top: 0.5rem; }
+  .filename { color: #cbd5e1; font-size: 0.9rem; }
+
+  .model-selector { margin-bottom: 1.5rem; }
+  .model-selector label { display: block; color: #94a3b8; font-size: 0.85rem; margin-bottom: 0.5rem; }
+  .model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.5rem; }
+  .model-card { background: #1e293b; border: 2px solid #334155; border-radius: 8px; padding: 0.75rem; cursor: pointer; transition: all 0.2s; }
+  .model-card:hover { border-color: #475569; }
+  .model-card.selected { border-color: #3b82f6; background: #1e3a5f; }
+  .model-card .model-name { font-weight: 600; font-size: 0.95rem; }
+  .model-card .model-info { color: #94a3b8; font-size: 0.75rem; margin-top: 0.25rem; }
+  .model-card .model-quality { font-size: 0.75rem; margin-top: 0.25rem; }
+  .model-loading { color: #94a3b8; font-size: 0.85rem; padding: 1rem; text-align: center; }
+
+  /* Docs page */
+  .docs { line-height: 1.8; }
+  .docs h2 { font-size: 1.4rem; margin: 2rem 0 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #334155; color: #f1f5f9; }
+  .docs h3 { font-size: 1.1rem; margin: 1.5rem 0 0.75rem; color: #cbd5e1; }
+  .docs h4 { font-size: 1rem; margin: 1rem 0 0.5rem; color: #94a3b8; }
+  .docs p { margin-bottom: 0.75rem; color: #cbd5e1; }
+  .docs ul, .docs ol { margin: 0.5rem 0 1rem 1.5rem; color: #cbd5e1; }
+  .docs li { margin-bottom: 0.3rem; }
+  .docs strong { color: #f1f5f9; }
+  .docs blockquote { border-left: 3px solid #3b82f6; padding: 0.5rem 1rem; margin: 1rem 0; background: #1e293b; border-radius: 0 8px 8px 0; color: #94a3b8; }
+  .docs table { width: 100%; border-collapse: collapse; margin: 1rem 0; font-size: 0.85rem; }
+  .docs th { background: #1e293b; padding: 0.6rem 0.75rem; text-align: left; border: 1px solid #334155; color: #94a3b8; font-weight: 600; }
+  .docs td { padding: 0.5rem 0.75rem; border: 1px solid #334155; color: #cbd5e1; }
+  .docs tr:hover td { background: #1e293b; }
+  .docs code { background: #334155; padding: 0.15rem 0.4rem; border-radius: 4px; font-size: 0.85em; color: #93c5fd; }
+  .docs pre { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
+  .docs pre code { background: none; padding: 0; color: #e2e8f0; }
+
+  /* Section nav */
+  .doc-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
+  .doc-nav a { padding: 0.4rem 0.8rem; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #94a3b8; text-decoration: none; font-size: 0.8rem; transition: all 0.2s; }
+  .doc-nav a:hover { color: #e2e8f0; border-color: #475569; }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>Whisper 語音轉文字</h1>
+  <p class="subtitle">上傳音檔或影片，自動轉錄為文字</p>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('tool')">轉錄工具</div>
+    <div class="tab" onclick="switchTab('docs')">方案評估報告</div>
+    <div class="tab" onclick="switchTab('arch')">系統架構</div>
+  </div>
+
+  <!-- Tab 1: 轉錄工具 -->
+  <div class="tab-content active" id="tab-tool">
+    <div class="model-selector">
+      <label>選擇模型（越大越準，但越慢、需更多記憶體）</label>
+      <div class="model-grid" id="modelGrid">
+        <div class="model-loading">載入模型列表中...</div>
+      </div>
+    </div>
+
+    <div class="drop-zone" id="dropZone">
+      <div class="icon">&#127908;</div>
+      <div>拖曳檔案到這裡，或點擊選擇檔案</div>
+      <p>支援 MP3, WAV, MP4, M4A, FLAC, OGG（上限 500MB）</p>
+      <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.mp4,.m4a,.flac,.ogg">
+    </div>
+
+    <div class="status-card" id="statusCard">
+      <div class="status-header">
+        <span class="filename" id="fileName"></span>
+        <span class="status-badge" id="statusBadge"></span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+      <div id="progressText" style="color:#94a3b8;font-size:0.85rem;margin-bottom:1rem;"></div>
+      <div class="error-msg" id="errorMsg" style="display:none;"></div>
+
+      <div class="result-area" id="resultArea" style="display:none;">
+        <div class="result-meta" id="resultMeta"></div>
+        <div class="result-text" id="resultText"></div>
+        <div class="download-btns">
+          <button class="btn btn-primary" onclick="download('txt')">&#128196; 下載 TXT</button>
+          <button class="btn btn-outline" onclick="download('srt')">&#127916; 下載 SRT</button>
+          <button class="btn btn-outline" onclick="download('json')">&#128203; 下載 JSON</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: 方案評估報告 -->
+  <div class="tab-content" id="tab-docs">
+    <div class="docs">
+      <div class="doc-nav">
+        <a href="#sec-overview">方案總覽</a>
+        <a href="#sec-models">模型家族</a>
+        <a href="#sec-demo">Demo 實測</a>
+        <a href="#sec-compare">方案比較</a>
+        <a href="#sec-features">功能矩陣</a>
+        <a href="#sec-hardware">硬體需求</a>
+        <a href="#sec-cost">成本估算</a>
+        <a href="#sec-recommend">推薦方案</a>
+        <a href="#sec-competitors">競爭者</a>
+      </div>
+
+      <blockquote>測試環境：Apple M2 / 8GB RAM / macOS 13.3 / whisper.cpp 1.8.4 (Metal GPU)<br>測試日期：2026-04-03 | 更新日期：2026-04-07</blockquote>
+
+      <h2 id="sec-overview">一、方案總覽</h2>
+      <table>
+        <tr><th>方案</th><th>類型</th><th>適用場景</th></tr>
+        <tr><td><strong>A. whisper.cpp（自建）</strong></td><td>開源，本地 / K8s 部署</td><td>資料不出站、批次處理、成本控制</td></tr>
+        <tr><td><strong>B. faster-whisper（自建）</strong></td><td>開源，GPU 伺服器 / K8s</td><td>高吞吐量生產環境</td></tr>
+        <tr><td><strong>C. OpenAI API（雲端）</strong></td><td>付費 API</td><td>快速導入、免維運</td></tr>
+      </table>
+
+      <h2 id="sec-models">二、模型家族一覽</h2>
+      <h3>開源 Whisper 模型</h3>
+      <table>
+        <tr><th>模型</th><th>參數量</th><th>檔案大小</th><th>英文 WER</th><th>中文表現</th><th>速度</th></tr>
+        <tr><td>tiny</td><td>39M</td><td>75 MB</td><td>~15%</td><td>差</td><td>最快</td></tr>
+        <tr><td>base</td><td>74M</td><td>142 MB</td><td>~13%</td><td>普通</td><td>很快</td></tr>
+        <tr><td>small</td><td>244M</td><td>466 MB</td><td>~10%</td><td>堪用</td><td>快</td></tr>
+        <tr><td><strong>medium</strong></td><td>769M</td><td>1.5 GB</td><td>~8%</td><td>好</td><td>中等</td></tr>
+        <tr><td>large-v2</td><td>1.55B</td><td>2.9 GB</td><td>~4-5%</td><td>很好</td><td>慢</td></tr>
+        <tr><td>large-v3</td><td>1.55B</td><td>2.9 GB</td><td>~3-4%</td><td>好（有幻覺風險）</td><td>慢</td></tr>
+        <tr><td><strong>large-v3-turbo</strong></td><td>809M</td><td>1.6 GB</td><td>~4-5%</td><td>很好</td><td><strong>比 large 快 8 倍</strong></td></tr>
+      </table>
+      <blockquote>OpenAI 已停止開發新 Whisper 模型，large-v3-turbo（2024/10）為最後版本。</blockquote>
+
+      <h3>OpenAI 付費 API 模型</h3>
+      <table>
+        <tr><th>模型</th><th>WER</th><th>價格</th><th>特色</th></tr>
+        <tr><td>whisper-1（舊版）</td><td>~7%</td><td>$0.006/分鐘</td><td>支援 SRT/VTT、word-level 時間戳</td></tr>
+        <tr><td><strong>gpt-4o-transcribe</strong></td><td><strong>~2.5%</strong></td><td>$0.006/分鐘</td><td>最高精度、抗噪能力強</td></tr>
+        <tr><td>gpt-4o-mini-transcribe</td><td>~3-4%</td><td>$0.003/分鐘</td><td>精度略低、<strong>價格減半</strong></td></tr>
+        <tr><td>gpt-4o-transcribe-diarize</td><td>~2.5%</td><td>$0.006/分鐘</td><td>含說話者辨識</td></tr>
+      </table>
+
+      <h2 id="sec-demo">三、Demo 實測結果</h2>
+      <p>測試內容：K8s 技術教學影片（中英混用）</p>
+
+      <h3>短音頻測試（9.8 秒）</h3>
+      <table>
+        <tr><th>項目</th><th>medium</th><th>large-v2</th></tr>
+        <tr><td>轉錄耗時</td><td><strong>4.2s</strong></td><td>7.4s</td></tr>
+        <tr><td>速度比</td><td>2.3x 即時</td><td>1.3x 即時</td></tr>
+      </table>
+
+      <h3>長音頻測試（5 分 14 秒）</h3>
+      <table>
+        <tr><th>項目</th><th>medium</th><th>large-v2</th></tr>
+        <tr><td>轉錄耗時</td><td><strong>48s</strong></td><td>~90s</td></tr>
+        <tr><td>速度比</td><td><strong>6.5x 即時</strong></td><td>~3.5x 即時</td></tr>
+      </table>
+
+      <h3>英文技術術語辨識（關鍵差異）</h3>
+      <table>
+        <tr><th>原詞</th><th>medium</th><th>large-v2</th></tr>
+        <tr><td>Worker</td><td>Walker</td><td><strong>Worker &#10004;</strong></td></tr>
+        <tr><td>Docker</td><td>Dock</td><td><strong>Docker &#10004;</strong></td></tr>
+        <tr><td>kubectl</td><td>Cube Control</td><td><strong>Kubectl &#10004;</strong></td></tr>
+        <tr><td>Minikube</td><td>MiniCube</td><td><strong>Minicube &#10004;</strong></td></tr>
+        <tr><td>Ubuntu</td><td>與幫助</td><td><strong>Ubuntu &#10004;</strong></td></tr>
+        <tr><td>Kubelet</td><td>Cubelet</td><td><strong>Kubelet &#10004;</strong></td></tr>
+        <tr><td>Scheduler</td><td>Schedule</td><td><strong>Scheduler &#10004;</strong></td></tr>
+        <tr><td>映像檔</td><td>印象檔</td><td><strong>映像檔 &#10004;</strong></td></tr>
+        <tr><td>叢集 (cluster)</td><td>重機</td><td>重機（兩者皆錯）</td></tr>
+        <tr><td>Pod</td><td>Part</td><td>Part（兩者皆錯）</td></tr>
+      </table>
+      <blockquote>large-v2 在英文技術術語辨識上大幅領先 medium，但「叢集」「Pod」等詞兩者皆錯，需後處理修正。</blockquote>
+
+      <h2 id="sec-compare">四、方案比較：優勢與劣勢</h2>
+
+      <h3>A. whisper.cpp（自建 — CPU 優先）</h3>
+      <table>
+        <tr><th>面向</th><th>說明</th></tr>
+        <tr><td><strong>優勢</strong></td><td>資料完全不出站、無 API 費用、支援量化（Q4/Q5/Q8）大幅降低硬體需求、Docker 映像僅 ~500MB、支援 Apple Metal / CUDA</td></tr>
+        <tr><td><strong>劣勢</strong></td><td>精度略低於 faster-whisper、不支援 batch 推理、原作者已將重心移至 llama.cpp</td></tr>
+        <tr><td><strong>適合</strong></td><td>資安要求高、邊緣部署、CPU-only 環境</td></tr>
+      </table>
+
+      <h3>B. faster-whisper（自建 — GPU 優先）</h3>
+      <table>
+        <tr><th>面向</th><th>說明</th></tr>
+        <tr><td><strong>優勢</strong></td><td>比原版 Whisper 快 4-8 倍、VRAM 用量降低 50-70%、內建 Silero VAD（自動過濾靜音）、支援 batch 推理</td></tr>
+        <tr><td><strong>劣勢</strong></td><td>需要 GPU（NVIDIA）、不支援 Apple Metal、Docker 映像 ~4GB</td></tr>
+        <tr><td><strong>適合</strong></td><td>GPU 伺服器、K8s GPU node pool、高吞吐量生產環境</td></tr>
+      </table>
+
+      <h3>C. OpenAI API（雲端）</h3>
+      <table>
+        <tr><th>面向</th><th>說明</th></tr>
+        <tr><td><strong>優勢</strong></td><td>精度最高（WER ~2.5%）、免維運、支援說話者辨識（diarize）、抗噪能力強</td></tr>
+        <tr><td><strong>劣勢</strong></td><td>資料需上傳 OpenAI、檔案上限 25MB、gpt-4o-transcribe 不支援 SRT/VTT/word-level 時間戳</td></tr>
+        <tr><td><strong>適合</strong></td><td>快速上線、少量音訊、對精度要求極高</td></tr>
+      </table>
+
+      <h2 id="sec-features">五、功能支援矩陣</h2>
+      <table>
+        <tr><th>功能</th><th>whisper.cpp</th><th>faster-whisper</th><th>OpenAI whisper-1</th><th>gpt-4o-transcribe</th></tr>
+        <tr><td>中文支援</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td></tr>
+        <tr><td>英文技術術語</td><td>&#10004;（large-v2+）</td><td>&#10004;（large-v2+）</td><td>&#10004;</td><td>&#10004;（最佳）</td></tr>
+        <tr><td>SRT/VTT 字幕</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10008;</td></tr>
+        <tr><td>Word-level 時間戳</td><td>&#10004;</td><td>&#10004;</td><td>&#10004;</td><td>&#10008;</td></tr>
+        <tr><td>說話者辨識</td><td>&#10008;</td><td>&#10008;</td><td>&#10008;</td><td>&#10004;（diarize）</td></tr>
+        <tr><td>即時串流</td><td>&#10004;</td><td>&#10008;</td><td>&#10008;</td><td>&#10004;</td></tr>
+        <tr><td>靜音過濾 (VAD)</td><td>&#10008;</td><td>&#10004;（內建）</td><td>&#10004;</td><td>&#10004;</td></tr>
+        <tr><td>資料不出站</td><td>&#10004;</td><td>&#10004;</td><td>&#10008;</td><td>&#10008;</td></tr>
+      </table>
+
+      <h2 id="sec-hardware">六、硬體需求</h2>
+      <h3>各模型最低配置</h3>
+      <table>
+        <tr><th>模型</th><th>CPU-only（RAM）</th><th>GPU 最低（VRAM）</th><th>GPU 建議</th></tr>
+        <tr><td>tiny / base</td><td>4 vCPU, 8GB</td><td>不需要</td><td>—</td></tr>
+        <tr><td>small</td><td>8 vCPU, 16GB</td><td>不需要</td><td>—</td></tr>
+        <tr><td><strong>medium</strong></td><td>16 vCPU, 32GB</td><td>T4 (16GB)</td><td>L4 (24GB)</td></tr>
+        <tr><td><strong>large-v2 / v3</strong></td><td>不建議（太慢）</td><td>L4 (24GB)</td><td>A100 (40GB)</td></tr>
+        <tr><td><strong>large-v3-turbo</strong></td><td>16 vCPU, 32GB（勉強）</td><td>T4 (16GB) 即可</td><td>L4 (24GB)</td></tr>
+      </table>
+
+      <h3>速度參考（Real-Time Factor，越小越快）</h3>
+      <table>
+        <tr><th>模型</th><th>Mac M2 8GB</th><th>T4 16GB GPU</th><th>A100 40GB GPU</th></tr>
+        <tr><td>small</td><td>0.5x</td><td>0.05x</td><td>0.02x</td></tr>
+        <tr><td>medium</td><td>1.5x</td><td>0.1x</td><td>0.04x</td></tr>
+        <tr><td>large-v2</td><td>記憶體不足</td><td>0.25x</td><td>0.07x</td></tr>
+        <tr><td>large-v3-turbo</td><td>2.0x（Q4 量化）</td><td>0.08x</td><td>0.03x</td></tr>
+      </table>
+
+      <h3>K8s Worker Node 建議規格</h3>
+      <table>
+        <tr><th>方案</th><th>Node 規格</th><th>同時處理量</th></tr>
+        <tr><td>whisper.cpp + small (CPU)</td><td>8 vCPU, 16GB</td><td>1-2 個</td></tr>
+        <tr><td>faster-whisper + turbo (GPU)</td><td>T4, 8 vCPU, 32GB</td><td>1 個 + 排隊 3-5</td></tr>
+        <tr><td>faster-whisper + large-v2 (GPU)</td><td>L4, 8 vCPU, 32GB</td><td>1 個</td></tr>
+        <tr><td>faster-whisper + large-v2 (GPU)</td><td>A100, 12 vCPU, 64GB</td><td>3-4 個</td></tr>
+      </table>
+
+      <h2 id="sec-cost">七、成本估算</h2>
+      <h3>自建方案（K8s / GKE）</h3>
+      <table>
+        <tr><th>GPU 類型</th><th>月費（On-Demand）</th><th>月費（Spot）</th><th>適用模型</th></tr>
+        <tr><td>T4 (16GB)</td><td>~$255/月</td><td><strong>~$80/月</strong></td><td>medium, large-v3-turbo</td></tr>
+        <tr><td>L4 (24GB)</td><td>~$511/月</td><td><strong>~$153/月</strong></td><td>large-v2/v3</td></tr>
+        <tr><td>A100 (40GB)</td><td>~$2,679/月</td><td><strong>~$803/月</strong></td><td>large-v2 高吞吐</td></tr>
+        <tr><td>CPU 8 vCPU</td><td>~$197/月</td><td>—</td><td>tiny, base, small</td></tr>
+      </table>
+
+      <h3>OpenAI API 方案</h3>
+      <table>
+        <tr><th>模型</th><th>每分鐘</th><th>每小時</th><th>100hr/月</th><th>500hr/月</th></tr>
+        <tr><td>gpt-4o-transcribe</td><td>$0.006</td><td>$0.36</td><td><strong>$36</strong></td><td><strong>$180</strong></td></tr>
+        <tr><td>gpt-4o-mini-transcribe</td><td>$0.003</td><td>$0.18</td><td><strong>$18</strong></td><td><strong>$90</strong></td></tr>
+        <tr><td>whisper-1</td><td>$0.006</td><td>$0.36</td><td>$36</td><td>$180</td></tr>
+      </table>
+
+      <h3>損益平衡分析</h3>
+      <table>
+        <tr><th>每日音訊量</th><th>自建（T4 Spot）</th><th>OpenAI API</th><th>結論</th></tr>
+        <tr><td>1 小時/天</td><td>~$80/月</td><td>~$11/月</td><td><strong>OpenAI</strong></td></tr>
+        <tr><td>5 小時/天</td><td>~$80/月</td><td>~$54/月</td><td><strong>OpenAI</strong></td></tr>
+        <tr><td>8 小時/天</td><td>~$80/月</td><td>~$86/月</td><td><strong>持平</strong></td></tr>
+        <tr><td>20 小時/天</td><td>~$80/月</td><td>~$216/月</td><td><strong>自建</strong></td></tr>
+        <tr><td>100 小時/天</td><td>~$120/月</td><td>~$1,080/月</td><td><strong>自建（省 9 倍）</strong></td></tr>
+      </table>
+      <blockquote>每天超過 ~8 小時音訊，自建方案開始比 OpenAI API 划算。</blockquote>
+
+      <h2 id="sec-recommend">八、推薦方案</h2>
+
+      <h3>場景 1：快速驗證 / 少量使用（&lt; 8hr/天）</h3>
+      <blockquote><strong>推薦：OpenAI gpt-4o-mini-transcribe API</strong><br>月費 &lt; $50 | 精度最高 | 導入時間幾小時 | 限制：資料需上傳 OpenAI</blockquote>
+
+      <h3>場景 2：中量生產（8-100hr/天）+ 需要字幕</h3>
+      <blockquote><strong>推薦：K8s + faster-whisper + large-v3-turbo + T4 Spot</strong><br>月費 $80-120 | 支援 SRT/VTT | 架構：API &rarr; Redis Queue &rarr; Worker Pods</blockquote>
+
+      <h3>場景 3：資安要求高 / 資料不可出站</h3>
+      <blockquote><strong>推薦：K8s + whisper.cpp + large-v2（Q5 量化）+ L4 GPU</strong><br>月費 $153（Spot）| 資料完全不出站</blockquote>
+
+      <h3>場景 4：邊緣部署 / 低成本</h3>
+      <blockquote><strong>推薦：whisper.cpp + small 模型 + CPU Node</strong><br>月費 $197 | 技術術語需後處理修正</blockquote>
+
+      <h2 id="sec-competitors">九、競爭者觀察（2026 年）</h2>
+      <table>
+        <tr><th>模型</th><th>來源</th><th>WER</th><th>特點</th></tr>
+        <tr><td>NVIDIA Canary Qwen 2.5B</td><td>NVIDIA</td><td>5.63%</td><td>開源最強，英文為主</td></tr>
+        <tr><td>IBM Granite Speech 3.3 8B</td><td>IBM</td><td>5.85%</td><td>多語言、Apache 2.0</td></tr>
+        <tr><td>NVIDIA Parakeet TDT 1.1B</td><td>NVIDIA</td><td>~8%</td><td>極快速度，即時串流</td></tr>
+        <tr><td>Moonshine</td><td>Useful Sensors</td><td>&#8776; large-v3</td><td>最小 26MB，邊緣裝置</td></tr>
+      </table>
+      <blockquote>多語言（中英混用）場景，Whisper 仍是目前最成熟的開源選擇。</blockquote>
+    </div>
+  </div>
+
+  <!-- Tab 3: 系統架構 -->
+  <div class="tab-content" id="tab-arch">
+    <div class="docs">
+
+      <h2>技術棧</h2>
+      <table>
+        <tr><th>元件</th><th>技術選擇</th><th>理由</th></tr>
+        <tr><td>API 層</td><td><strong>FastAPI</strong> (Python)</td><td>async 原生、自動產生 OpenAPI 文件</td></tr>
+        <tr><td>任務佇列</td><td><strong>Redis + arq</strong></td><td>輕量，Redis 兼任 broker 和快取</td></tr>
+        <tr><td>資料庫（生產版）</td><td><strong>PostgreSQL</strong></td><td>任務紀錄、使用量統計</td></tr>
+        <tr><td>物件儲存（生產版）</td><td><strong>MinIO / S3</strong></td><td>音檔 + 結果，S3 相容</td></tr>
+        <tr><td>轉錄引擎</td><td><strong>faster-whisper</strong></td><td>GPU 生產首選，速度快 4-8x，內建 VAD</td></tr>
+        <tr><td>容器化</td><td><strong>Docker / K8s</strong></td><td>Worker 常駐載入模型，避免重複載入</td></tr>
+      </table>
+
+      <h2>架構圖</h2>
+      <pre><code>用戶上傳音檔
+    |
+    v
++----------+  儲存音檔   +----------+
+| FastAPI  |------------&gt;|  MinIO   |
+| API      |             |  /S3     |
++----+-----+             +----------+
+     | enqueue
+     v
++----------+  dequeue    +------------------+
+|  Redis   |------------&gt;| Whisper Worker   |
+|  Queue   |&lt;------------| (faster-whisper) |
++----------+  更新進度    +-------+----------+
+                                 |
+                    +------------+------------+
+                    v            v            v
+              +----------+ +----------+ +----------+
+              |  MinIO   | |  Redis   | | Postgres |
+              | 存結果   | | 狀態快取 | | 任務紀錄 |
+              +----------+ +----------+ +----------+</code></pre>
+
+      <h2>部署方式</h2>
+
+      <h3>簡單版：Docker Compose（目前的 MVP）</h3>
+      <pre><code>+--------------------------------------+
+|         單機 (GPU/CPU)               |
+|                                      |
+|  FastAPI (:8000) --- 前端 + API      |
+|       |                              |
+|       v                              |
+|  Redis (:6379) --- 任務佇列          |
+|       |                              |
+|       v                              |
+|  Whisper Worker --- 轉錄引擎        |
++--------------------------------------+</code></pre>
+      <ul>
+        <li>一張 RTX 4090 跑 large-v3，30 分鐘音檔約 2-3 分鐘處理完</li>
+        <li>一天可處理 ~500 個 30 分鐘檔案</li>
+      </ul>
+
+      <h3>生產版：K8s + 自動擴展</h3>
+      <pre><code>+-----------------------------------------------------+
+|                   K8s Cluster                        |
+|                                                     |
+|  Ingress (Nginx, TLS, 上傳限制 500MB)               |
+|    +--&gt; Deployment: api-server (2-5 replicas, HPA)  |
+|                                                     |
+|  Deployment: whisper-worker (1-10 replicas, KEDA)   |
+|    +--&gt; 每個 Pod 綁 1 張 GPU                        |
+|    +--&gt; KEDA 依 Redis 佇列深度自動擴展              |
+|                                                     |
+|  StatefulSet: redis     (PVC 10Gi)                  |
+|  StatefulSet: postgres  (PVC 50Gi)                  |
+|  StatefulSet: minio     (PVC 500Gi)                 |
+|                                                     |
+|  監控: Prometheus + Grafana                          |
++-----------------------------------------------------+</code></pre>
+
+      <table>
+        <tr><th>K8s 資源</th><th>用途</th></tr>
+        <tr><td>Ingress</td><td>TLS 終端、上傳大小限制</td></tr>
+        <tr><td>HPA</td><td>API Server 依 CPU 使用率擴展</td></tr>
+        <tr><td>KEDA</td><td>Worker 依佇列深度擴展（佇列 &gt; 2 就加 Pod）</td></tr>
+        <tr><td>ConfigMap</td><td>模型名稱、語言設定</td></tr>
+        <tr><td>Secret</td><td>DB 密碼、MinIO key、API key</td></tr>
+        <tr><td>PVC</td><td>Redis / PostgreSQL / MinIO 持久化</td></tr>
+      </table>
+
+      <h2>中英混用特殊處理</h2>
+      <pre><code># faster-whisper 最佳參數
+segments, info = model.transcribe(
+    audio_path,
+    language=None,                    # 自動偵測，不要鎖定語言
+    vad_filter=True,                  # 過濾靜音段
+    word_timestamps=True,             # word-level 時間戳
+    condition_on_previous_text=True,  # 利用上文改善辨識
+    initial_prompt="這是關於 Kubernetes、Docker 的技術教學",
+)</code></pre>
+
+      <h3>術語自動修正（後處理）</h3>
+      <pre><code>TERM_CORRECTIONS = {
+    "重機": "叢集",
+    "Part": "Pod",
+    "酷伯内提斯": "Kubernetes",
+    "刀可": "Docker",
+    # 可由使用者自訂擴充
+}</code></pre>
+
+      <h2>實作階段</h2>
+      <table>
+        <tr><th>階段</th><th>內容</th><th>產出</th></tr>
+        <tr><td><strong>Phase 1</strong></td><td>FastAPI + Worker + Redis (Docker Compose)</td><td><strong>可 demo &#10004;</strong></td></tr>
+        <tr><td>Phase 2</td><td>PostgreSQL 整合、API 完善、前端介面</td><td>完整服務</td></tr>
+        <tr><td>Phase 3</td><td>中英混用後處理、術語修正表</td><td>提升品質</td></tr>
+        <tr><td>Phase 4</td><td>K8s 部署、KEDA 自動擴展</td><td>生產就緒</td></tr>
+        <tr><td>Phase 5</td><td>Prometheus + Grafana 監控</td><td>可觀測性</td></tr>
+      </table>
+
+      <h2>後續優化方向</h2>
+      <ol>
+        <li><strong>自動術語替換表</strong> — 建立中英技術術語對照表，自動後處理修正</li>
+        <li><strong>Breeze ASR 25</strong> — 聯發科開源中文 ASR，若能轉 GGML 格式，中英混用品質預期大幅提升</li>
+        <li><strong>Hybrid 方案</strong> — 自建 whisper 做初稿 + OpenAI API 做精修</li>
+        <li><strong>NVIDIA Canary Qwen 2.5B</strong> — 目前開源 WER 最低（5.63%），多語言支援待觀察</li>
+        <li><strong>量化模型</strong> — 使用 whisper-quantize 壓縮模型，進一步降低硬體需求</li>
+      </ol>
+    </div>
+  </div>
+</div>
+
+<script>
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t, i) => {
+    const tabs = ['tool', 'docs', 'arch'];
+    t.classList.toggle('active', tabs[i] === name);
+  });
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+const dropZone = document.getElementById('dropZone');
+const fileInput = document.getElementById('fileInput');
+const statusCard = document.getElementById('statusCard');
+let currentTaskId = null;
+let pollTimer = null;
+let selectedModel = '';
+
+async function loadModels() {
+  try {
+    const res = await fetch('/api/models');
+    const data = await res.json();
+    selectedModel = data.default;
+    const grid = document.getElementById('modelGrid');
+    grid.innerHTML = data.models.map(m => `
+      <div class="model-card ${m.id === data.default ? 'selected' : ''}" data-model="${m.id}" onclick="selectModel('${m.id}')">
+        <div class="model-name">${m.name} ${m.id === data.default ? '(預設)' : ''}</div>
+        <div class="model-info">${m.size} | ${m.speed}</div>
+        <div class="model-quality">品質: ${m.quality}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    document.getElementById('modelGrid').innerHTML = '<div class="model-loading">無法載入模型列表</div>';
+  }
+}
+
+function selectModel(id) {
+  selectedModel = id;
+  document.querySelectorAll('.model-card').forEach(el => {
+    el.classList.toggle('selected', el.dataset.model === id);
+  });
+}
+
+loadModels();
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => { if (fileInput.files.length) uploadFile(fileInput.files[0]); });
+
+async function uploadFile(file) {
+  statusCard.style.display = 'block';
+  document.getElementById('fileName').textContent = file.name;
+  document.getElementById('resultArea').style.display = 'none';
+  document.getElementById('errorMsg').style.display = 'none';
+  setBadge('queued', '上傳中...');
+  setProgress(0, '上傳中...');
+
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    const url = selectedModel ? `/api/transcribe?model=${selectedModel}` : '/api/transcribe';
+    const res = await fetch(url, { method: 'POST', body: form });
+    if (!res.ok) {
+      const err = await res.json();
+      throw new Error(err.detail || 'Upload failed');
+    }
+    const data = await res.json();
+    currentTaskId = data.task_id;
+    setBadge('queued', '排隊中');
+    startPolling();
+  } catch (e) {
+    setBadge('failed', '失敗');
+    showError(e.message);
+  }
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(pollStatus, 2000);
+  pollStatus();
+}
+
+async function pollStatus() {
+  if (!currentTaskId) return;
+  try {
+    const res = await fetch(`/api/tasks/${currentTaskId}`);
+    const data = await res.json();
+
+    if (data.status === 'queued') {
+      setBadge('queued', '排隊中');
+      setProgress(0, '等待處理...');
+    } else if (data.status === 'processing') {
+      setBadge('processing', '轉錄中');
+      setProgress(data.progress, `轉錄中... ${data.progress}%`);
+    } else if (data.status === 'completed') {
+      clearInterval(pollTimer);
+      setBadge('completed', '完成');
+      setProgress(100, '轉錄完成');
+      showResult(data.result);
+    } else if (data.status === 'failed') {
+      clearInterval(pollTimer);
+      setBadge('failed', '失敗');
+      showError(data.error || 'Unknown error');
+    }
+  } catch (e) {
+    console.error('Poll error:', e);
+  }
+}
+
+function setBadge(status, text) {
+  const badge = document.getElementById('statusBadge');
+  badge.textContent = text;
+  badge.className = `status-badge badge-${status}`;
+}
+
+function setProgress(pct, text) {
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = text;
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorMsg');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function showResult(result) {
+  if (!result) return;
+  document.getElementById('resultArea').style.display = 'block';
+
+  const lang = result.language || '?';
+  const dur = result.duration ? (result.duration / 60).toFixed(1) : '?';
+  const elapsed = result.elapsed || '?';
+  const model = result.model || '?';
+  document.getElementById('resultMeta').textContent =
+    `語言: ${lang} | 音檔長度: ${dur} 分鐘 | 處理時間: ${elapsed}s | 模型: ${model}`;
+
+  const segments = result.segments || [];
+  if (segments.length > 0) {
+    document.getElementById('resultText').innerHTML = segments.map(s => {
+      const start = formatTime(s.start);
+      const end = formatTime(s.end);
+      return `<span style="color:#64748b">[${start} - ${end}]</span> ${escapeHtml(s.text)}`;
+    }).join('\n');
+  } else {
+    document.getElementById('resultText').textContent = result.text || '(no text)';
+  }
+}
+
+function formatTime(sec) {
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function download(fmt) {
+  if (!currentTaskId) return;
+  window.open(`/api/tasks/${currentTaskId}/download?format=${fmt}`, '_blank');
+}
+</script>
+</body>
+</html>

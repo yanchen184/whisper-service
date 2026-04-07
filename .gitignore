@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+whisper-env/
+
+# Models (too large for git)
+models/*.bin
+
+# Output
+output/
+
+# Audio files
+*.wav
+*.mp3
+*.mp4
+*.m4a
+*.flac
+
+# Docker
+.env
+
+# OS
+.DS_Store
+
+# IDE
+.vscode/
+.idea/
+
+# Claude
+CLAUDE.md

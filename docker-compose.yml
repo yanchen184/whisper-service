@@ -1,0 +1,56 @@
+services:
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 3
+
+  api:
+    build: ./api
+    ports:
+      - "8000:8000"
+    volumes:
+      - whisper-data:/data
+      - ./web:/web
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+      - REDIS_URL=redis://redis:6379
+      - UPLOAD_DIR=/data/uploads
+      - RESULT_DIR=/data/results
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+  worker:
+    build: ./api
+    volumes:
+      - whisper-data:/data
+      - whisper-cache:/root/.cache
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+      - REDIS_URL=redis://redis:6379
+      - UPLOAD_DIR=/data/uploads
+      - RESULT_DIR=/data/results
+      - DEVICE=${DEVICE:-auto}
+      - COMPUTE_TYPE=${COMPUTE_TYPE:-int8}
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: arq app.worker.WorkerSettings
+    # GPU support: uncomment below if you have NVIDIA GPU + nvidia-container-toolkit
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+volumes:
+  redis-data:
+  whisper-data:
+  whisper-cache:
