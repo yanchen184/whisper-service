@@ -17,7 +17,14 @@ router = APIRouter(prefix="/api")
 
 _stream_model = None
 _model_lock = threading.Lock()
-_active_connections = 0
+_connection_semaphore: asyncio.Semaphore | None = None
+
+
+def _get_semaphore() -> asyncio.Semaphore:
+    global _connection_semaphore
+    if _connection_semaphore is None:
+        _connection_semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
+    return _connection_semaphore
 
 
 def _get_stream_model():
@@ -52,16 +59,16 @@ async def health():
 
 @router.websocket("/stream")
 async def websocket_stream(ws: WebSocket):
-    global _active_connections
+    sem = _get_semaphore()
 
-    if _active_connections >= MAX_CONNECTIONS:
+    if sem.locked():
         await ws.accept()
-        await ws.send_json({"type": "error", "message": f"伺服器忙碌中（{_active_connections}/{MAX_CONNECTIONS}），請稍後再試"})
+        await ws.send_json({"type": "error", "message": f"伺服器忙碌中（已達 {MAX_CONNECTIONS} 人上限），請稍後再試"})
         await ws.close()
         return
 
+    await sem.acquire()
     await ws.accept()
-    _active_connections += 1
 
     model = None
     language = "zh"
@@ -78,7 +85,7 @@ async def websocket_stream(ws: WebSocket):
                         _transcribe_chunk, model, chunk, language
                     )
                     if text.strip():
-                        logger.info("Transcribed: '%s'", text.strip()[:100])
+                        logger.debug("Transcribed: '%s'", text.strip()[:100])
                         await ws.send_json({"type": "transcript", "text": text.strip()})
                 except asyncio.CancelledError:
                     break
@@ -94,7 +101,10 @@ async def websocket_stream(ws: WebSocket):
             msg = await ws.receive()
 
             if "text" in msg:
-                data = json.loads(msg["text"])
+                try:
+                    data = json.loads(msg["text"])
+                except json.JSONDecodeError:
+                    continue
 
                 if data.get("action") == "start":
                     language = data.get("language", "zh")
@@ -127,7 +137,7 @@ async def websocket_stream(ws: WebSocket):
     except Exception:
         logger.exception("WebSocket error")
     finally:
-        _active_connections -= 1
+        sem.release()
         if worker_task:
             worker_task.cancel()
 

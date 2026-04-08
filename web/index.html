@@ -60,7 +60,7 @@
   <div class="output" id="output"></div>
 
   <div class="actions">
-    <button class="btn" onclick="copyText()">複製全部文字</button>
+    <button class="btn" onclick="copyText(this)">複製全部文字</button>
     <button class="btn" onclick="clearText()">清除</button>
   </div>
 
@@ -94,7 +94,8 @@ async function start() {
   }
 
   const lang = document.querySelector('input[name="lang"]:checked').value;
-  ws = new WebSocket(`ws://${location.host}/api/stream`);
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${proto}//${location.host}/api/stream`);
 
   ws.onopen = () => {
     ws.send(JSON.stringify({ action: 'start', language: lang }));
@@ -176,9 +177,8 @@ function appendText(text) {
 
 function clearText() { document.getElementById('output').textContent = ''; }
 
-function copyText() {
+function copyText(btn) {
   navigator.clipboard.writeText(document.getElementById('output').textContent).then(() => {
-    const btn = event.target;
     btn.textContent = '已複製!';
     setTimeout(() => btn.textContent = '複製全部文字', 1500);
   });

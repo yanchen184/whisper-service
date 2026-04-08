@@ -24,7 +24,7 @@ spec:
                 name: whisper-config
           volumeMounts:
             - name: model-cache
-              mountPath: /root/.cache/huggingface
+              mountPath: /home/appuser/.cache/huggingface
           resources:
             requests:
               cpu: "500m"

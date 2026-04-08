@@ -7,7 +7,7 @@ services:
       - "8000:8000"
     volumes:
       - ./web:/web
-      - model-cache:/root/.cache
+      - model-cache:/home/appuser/.cache
     environment:
       - STREAM_MODEL=${STREAM_MODEL:-phate334/Breeze-ASR-25-ct2}
       - DEVICE=${DEVICE:-auto}
