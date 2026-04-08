@@ -4,6 +4,23 @@
 
 > **分支說明**：`main` 為生產配置（Breeze ASR 25 + GPU），`local` 為本機測試配置（base 模型 + CPU）
 
+### 分支差異（僅規格不同，程式碼完全一致）
+
+| 檔案 | 設定 | local | main |
+|------|------|-------|------|
+| `configmap.yaml` | STREAM_MODEL | `base` | `phate334/Breeze-ASR-25-ct2` |
+| | DEVICE | `cpu` | `cuda` |
+| | COMPUTE_TYPE | `int8` | `float16` |
+| `deployment.yaml` | replicas | 1 | 2 |
+| | CPU request / limit | 500m / 2 | 4 / 8 |
+| | Memory request / limit | 512Mi / 2Gi | 8Gi / 16Gi |
+| | GPU | 無 | `nvidia.com/gpu: 1` |
+| | nodeSelector | 無 | `gpu: "true"` |
+| `pv.yaml` | 儲存類型 | local-path | NFS |
+| `ingress.yaml` | ingressClass | 無（Traefik） | nginx + WebSocket timeout |
+| | host | 無 | `whisper.example.com` |
+| `docker-compose.yml` | STREAM_MODEL 預設 | `base` | `phate334/Breeze-ASR-25-ct2` |
+
 ---
 
 ## 架構
