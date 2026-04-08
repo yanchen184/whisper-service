@@ -29,16 +29,6 @@
 - 10 人同時講話 → 2 個 Pod 分攤負載，確保回應延遲 < 3 秒
 - 如果只有 5 人以下，1 台 GPU Node 就夠
 
-**雲端租用參考（每台 GPU Node）**：
-
-| 雲端 | 機型 | vCPU | RAM | GPU | 參考月費（USD） |
-|------|------|------|-----|-----|----------------|
-| GCP | g2-standard-8 | 8 | 32GB | L4 x1 | ~$600 |
-| AWS | g6.2xlarge | 8 | 32GB | L4 x1 | ~$580 |
-| Azure | NC4as T4 v3 | 4 | 28GB | T4 x1 | ~$400 |
-
-> T4（16GB VRAM）也能跑 Breeze ASR 25（5GB），價格更便宜但推論速度比 L4 慢約 40%
-
 **地端自建參考（每台 GPU Node）**：
 
 | 項目 | 最低規格 |
@@ -194,7 +184,7 @@ kubectl get configmap whisper-config -n whisper -o yaml
 # 1. 修改 ConfigMap 裡的模型名稱
 kubectl edit configmap whisper-config -n whisper
 # 把 STREAM_MODEL 改成你要的模型，例如：
-#   base / small / large-v2 / phate334/Breeze-ASR-25-ct2
+#   large-v2 / large-v3 / phate334/Breeze-ASR-25-ct2
 
 # 2. 重啟 Pod（模型會重新載入）
 kubectl rollout restart deployment/api -n whisper
@@ -219,6 +209,9 @@ kubectl get pods -n whisper -w
 
 ```bash
 kubectl delete -k k8s/
+
+# Docker Compose
+docker compose down
 ```
 
 ---
@@ -259,8 +252,8 @@ WS /api/stream
 ### 健康檢查
 
 ```bash
-curl http://localhost:8000/api/health
-# {"status": "ok", "model": "base"}
+curl http://<host>/api/health
+# {"status": "ok", "model": "phate334/Breeze-ASR-25-ct2"}
 # 模型載入中回 503: {"status": "loading"}
 ```
 
@@ -275,7 +268,7 @@ git clone https://github.com/yanchen184/whisper-service.git
 cd whisper-service
 git checkout local  # 本機測試用 local 分支
 
-cp .env.example .env
+cp .env.example .env   # 預設值即可，不需修改
 docker compose up -d
 
 open http://localhost:8081
