@@ -115,7 +115,15 @@ async function start() {
     }
   };
 
-  ws.onclose = () => { streaming = false; stopCapture(); setUI('off'); };
+  ws.onclose = () => {
+    if (streaming) {
+      setUI('off');
+      appendText('\n[連線中斷，3 秒後重連...]\n');
+      setTimeout(() => { if (!streaming) return; stopCapture(); start(); }, 3000);
+    } else {
+      stopCapture(); setUI('off');
+    }
+  };
   ws.onerror = () => { stop(); alert('無法連線到伺服器'); };
 }
 

@@ -7,11 +7,12 @@ services:
       - ./web:/web
       - model-cache:/root/.cache
     environment:
-      - STREAM_MODEL=${STREAM_MODEL:-base}
+      - STREAM_MODEL=${STREAM_MODEL:-phate334/Breeze-ASR-25-ct2}
       - DEVICE=${DEVICE:-auto}
       - COMPUTE_TYPE=${COMPUTE_TYPE:-int8}
+      - MAX_CONNECTIONS=${MAX_CONNECTIONS:-5}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
-    # GPU support: uncomment below if you have NVIDIA GPU
+    # GPU support: uncomment below
     # deploy:
     #   resources:
     #     reservations:

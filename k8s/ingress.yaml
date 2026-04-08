@@ -4,16 +4,10 @@ metadata:
   name: whisper-ingress
   namespace: whisper
   annotations:
-    # WebSocket 支援（重要）
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
-    # 上傳大小限制
     nginx.ingress.kubernetes.io/proxy-body-size: "500m"
-    # WebSocket upgrade
-    nginx.ingress.kubernetes.io/configuration-snippet: |
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_set_header Connection "upgrade";
 spec:
   ingressClassName: nginx
   rules:
