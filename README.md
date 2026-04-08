@@ -21,14 +21,6 @@
 |------|------|------|------|
 | GPU Node | 8 vCPU, 32GB RAM, NVIDIA L4 24GB | 2 台 | 每台跑 1 個 API Pod，各自載入模型獨立運算 |
 | 磁碟 | NFS 共享儲存 | 1 份 | model-cache 10Gi，模型下載一次兩台共用 |
-| 網路 | Node 之間內網互通 | — | K8s cluster networking |
-
-**為什麼需要 2 台 GPU Node？**
-- Breeze ASR 25 模型載入後佔用約 5GB VRAM
-- 單張 L4（24GB VRAM）一次只能處理一段音訊，處理時間約 0.5-2 秒
-- 10 人同時講話 → 2 個 Pod 分攤負載，確保回應延遲 < 3 秒
-- 如果只有 5 人以下，1 台 GPU Node 就夠
-
 **地端自建參考（每台 GPU Node）**：
 
 | 項目 | 最低規格 |
