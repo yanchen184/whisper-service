@@ -6,6 +6,7 @@ namespace: whisper
 resources:
   - namespace.yaml
   - configmap.yaml
+  - pv-nfs.yaml       # NFS 共享儲存。若單台可改 pv-hostpath.yaml
   - pvc.yaml
   - deployment.yaml
   - service.yaml

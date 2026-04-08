@@ -1,0 +1,13 @@
+# NFS — 多 Node 共享，Pod 可以跑在任意 Node
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: model-cache-pv
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes: [ReadWriteMany]
+  persistentVolumeReclaimPolicy: Retain
+  nfs:
+    server: 192.168.1.100  # 改成你的 NFS Server IP
+    path: /exports/whisper/model-cache  # NFS 上的路徑

@@ -4,7 +4,8 @@ metadata:
   name: model-cache
   namespace: whisper
 spec:
-  accessModes: [ReadWriteOnce]
+  accessModes: [ReadWriteMany]
   resources:
     requests:
       storage: 10Gi
+  volumeName: model-cache-pv  # 指定綁定到哪個 PV
