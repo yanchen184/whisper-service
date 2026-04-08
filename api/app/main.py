@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import REDIS_URL
-from app.routes import router
+from app.routes import router, _get_stream_model
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s")
 
@@ -25,6 +25,9 @@ async def lifespan(app: FastAPI):
     pool = await create_pool(settings)
     app.state.redis = pool
     app.state.arq_pool = pool
+    logging.getLogger(__name__).info("Pre-loading stream model...")
+    _get_stream_model()
+    logging.getLogger(__name__).info("Stream model ready")
     yield
     await pool.close()
 
