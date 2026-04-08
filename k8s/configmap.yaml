@@ -4,10 +4,6 @@ metadata:
   name: whisper-config
   namespace: whisper
 data:
-  WHISPER_MODEL: "phate334/Breeze-ASR-25-ct2"
   STREAM_MODEL: "phate334/Breeze-ASR-25-ct2"
   DEVICE: "cuda"
   COMPUTE_TYPE: "float16"
-  REDIS_URL: "redis://redis:6379"
-  UPLOAD_DIR: "/data/uploads"
-  RESULT_DIR: "/data/results"

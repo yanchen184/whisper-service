@@ -4,21 +4,10 @@ metadata:
   name: model-cache
   namespace: whisper
 spec:
-  accessModes: [ReadOnlyMany]
+  accessModes: [ReadWriteOnce]
   resources:
     requests:
       storage: 10Gi
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: upload-data
-  namespace: whisper
-spec:
-  accessModes: [ReadWriteMany]
-  resources:
-    requests:
-      storage: 50Gi
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -47,8 +36,6 @@ spec:
           volumeMounts:
             - name: model-cache
               mountPath: /root/.cache/huggingface
-            - name: upload-data
-              mountPath: /data
           resources:
             requests:
               cpu: "4"
@@ -60,13 +47,13 @@ spec:
               nvidia.com/gpu: "1"
           readinessProbe:
             httpGet:
-              path: /api/models
+              path: /
               port: 8000
             initialDelaySeconds: 180
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /api/models
+              path: /
               port: 8000
             initialDelaySeconds: 180
             periodSeconds: 30
@@ -74,9 +61,6 @@ spec:
         - name: model-cache
           persistentVolumeClaim:
             claimName: model-cache
-        - name: upload-data
-          persistentVolumeClaim:
-            claimName: upload-data
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists
