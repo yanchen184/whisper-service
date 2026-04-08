@@ -23,7 +23,6 @@ router = APIRouter(prefix="/api")
 
 # Stream: 共用一個 model instance（lazy load）
 _stream_model = None
-_stream_lock = asyncio.Lock()
 
 
 def _get_stream_model():
@@ -51,55 +50,63 @@ def _get_stream_model():
 async def websocket_stream(ws: WebSocket):
     await ws.accept()
 
-    if _stream_lock.locked():
-        await ws.send_json({"type": "error", "message": "已有其他使用者正在使用，請稍後再試"})
-        await ws.close()
-        return
+    model = None
+    language = "zh"
+    is_streaming = False
+    chunk_queue: asyncio.Queue = asyncio.Queue()
+    worker_task: asyncio.Task | None = None
 
-    async with _stream_lock:
-        model = None
-        language = "zh"
-        is_streaming = False
+    async def chunk_worker():
+        """背景 worker：從 queue 取 chunk，轉錄後推回前端"""
+        while True:
+            chunk = await chunk_queue.get()
+            try:
+                text = await asyncio.to_thread(
+                    _transcribe_chunk, model, chunk, language
+                )
+                if text.strip():
+                    logger.info("Transcribed: '%s'", text.strip()[:100])
+                    await ws.send_json({"type": "transcript", "text": text.strip()})
+            except Exception as e:
+                logger.warning("Stream transcribe error: %s", e)
+            finally:
+                chunk_queue.task_done()
 
-        try:
-            while True:
-                msg = await ws.receive()
+    try:
+        while True:
+            msg = await ws.receive()
 
-                # 文字訊息（控制指令）
-                if "text" in msg:
-                    data = json.loads(msg["text"])
+            if "text" in msg:
+                data = json.loads(msg["text"])
 
-                    if data["action"] == "start":
-                        language = data.get("language", "zh")
-                        if language == "auto":
-                            language = None
-                        await ws.send_json({"type": "status", "message": "loading"})
-                        model = await asyncio.to_thread(_get_stream_model)
-                        is_streaming = True
-                        await ws.send_json({"type": "status", "message": "started"})
+                if data["action"] == "start":
+                    language = data.get("language", "zh")
+                    if language == "auto":
+                        language = None
+                    await ws.send_json({"type": "status", "message": "loading"})
+                    model = await asyncio.to_thread(_get_stream_model)
+                    is_streaming = True
+                    worker_task = asyncio.create_task(chunk_worker())
+                    await ws.send_json({"type": "status", "message": "started"})
 
-                    elif data["action"] == "stop":
-                        is_streaming = False
-                        await ws.send_json({"type": "status", "message": "stopped"})
+                elif data["action"] == "stop":
+                    is_streaming = False
+                    if worker_task:
+                        worker_task.cancel()
+                        worker_task = None
+                    await ws.send_json({"type": "status", "message": "stopped"})
 
-                # 二進位訊息（音訊片段）
-                elif "bytes" in msg and is_streaming and model is not None:
-                    audio_bytes = msg["bytes"]
-                    if len(audio_bytes) < 1000:
-                        continue
+            elif "bytes" in msg:
+                audio = msg["bytes"]
+                logger.info("Received chunk: %d bytes, streaming=%s", len(audio), is_streaming)
+                if is_streaming and model is not None and len(audio) >= 1000:
+                    await chunk_queue.put(audio)
 
-                    # 寫入暫存檔，用 ffmpeg 轉 wav，再餵給 faster-whisper
-                    try:
-                        text = await asyncio.to_thread(
-                            _transcribe_chunk, model, audio_bytes, language
-                        )
-                        if text.strip():
-                            await ws.send_json({"type": "transcript", "text": text.strip()})
-                    except Exception as e:
-                        logger.warning("Stream transcribe error: %s", e)
-
-        except (WebSocketDisconnect, Exception):
-            pass
+    except (WebSocketDisconnect, Exception):
+        pass
+    finally:
+        if worker_task:
+            worker_task.cancel()
 
 
 def _transcribe_chunk(model, audio_bytes: bytes, language) -> str:
@@ -110,14 +117,17 @@ def _transcribe_chunk(model, audio_bytes: bytes, language) -> str:
 
     wav_path = webm_path.replace(".webm", ".wav")
     try:
-        subprocess.run(
+        result = subprocess.run(
             ["ffmpeg", "-y", "-i", webm_path, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", wav_path],
-            capture_output=True, check=True,
+            capture_output=True,
         )
+        if result.returncode != 0:
+            return ""  # 跳過無法轉換的 chunk
+
         segments, _ = model.transcribe(
             wav_path,
             language=language,
-            vad_filter=True,
+            vad_filter=False,
             condition_on_previous_text=True,
         )
         return "".join(seg.text for seg in segments)

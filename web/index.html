@@ -147,8 +147,8 @@
     <div class="stream-controls">
       <button class="stream-btn start" id="streamBtn" onclick="toggleStream()">開始辨識</button>
       <div class="stream-status">
-        <span class="dot disconnected" id="streamDot"></span>
-        <span id="streamStatusText">未連線</span>
+        <span class="dot connected" id="streamDot"></span>
+        <span id="streamStatusText">點擊開始辨識</span>
       </div>
     </div>
 
@@ -631,7 +631,7 @@ function startMicCapture() {
       streamWs.send(e.data);
     }
   };
-  streamRecorder.start(3000);
+  streamRecorder.start(5000);
 }
 
 function stopMicCapture() {
@@ -673,7 +673,7 @@ function updateStreamUI(state) {
     dot.className = 'dot loading'; st.textContent = '模型載入中...';
   } else {
     btn.textContent = '開始辨識'; btn.className = 'stream-btn start';
-    dot.className = 'dot disconnected'; st.textContent = '未連線';
+    dot.className = 'dot disconnected'; st.textContent = '點擊開始辨識';
   }
 }
 
