@@ -37,7 +37,8 @@ spec:
     spec:
       containers:
         - name: api
-          image: ghcr.io/yanchen184/whisper-service:latest
+          image: whisper-service:latest
+          imagePullPolicy: Never
           ports:
             - containerPort: 8000
           envFrom:

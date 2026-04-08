@@ -15,7 +15,8 @@ spec:
     spec:
       containers:
         - name: worker
-          image: ghcr.io/yanchen184/whisper-service:latest
+          image: whisper-service:latest
+          imagePullPolicy: Never
           command: [arq, app.worker.WorkerSettings]
           envFrom:
             - configMapRef:
