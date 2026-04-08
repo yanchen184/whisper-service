@@ -3,9 +3,16 @@ kind: Ingress
 metadata:
   name: whisper-ingress
   namespace: whisper
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-body-size: "500m"
 spec:
+  ingressClassName: nginx
   rules:
-    - http:
+    - host: whisper.example.com  # 改成你的 domain
+      http:
         paths:
           - path: /
             pathType: Prefix

@@ -4,7 +4,7 @@ metadata:
   name: api
   namespace: whisper
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
       app: api
@@ -27,11 +27,13 @@ spec:
               mountPath: /root/.cache/huggingface
           resources:
             requests:
-              cpu: "500m"
-              memory: 512Mi
+              cpu: "4"
+              memory: 8Gi
+              nvidia.com/gpu: "1"
             limits:
-              cpu: "2"
-              memory: 2Gi
+              cpu: "8"
+              memory: 16Gi
+              nvidia.com/gpu: "1"
           readinessProbe:
             httpGet:
               path: /api/health
@@ -48,3 +50,7 @@ spec:
         - name: model-cache
           persistentVolumeClaim:
             claimName: model-cache
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule

@@ -4,8 +4,9 @@ metadata:
   name: model-cache
   namespace: whisper
 spec:
-  accessModes: [ReadWriteOnce]
-  storageClassName: local-path
+  accessModes: [ReadWriteMany]
+  storageClassName: ""
   resources:
     requests:
       storage: 10Gi
+  volumeName: model-cache-pv
