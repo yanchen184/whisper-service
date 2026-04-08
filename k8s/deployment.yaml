@@ -50,6 +50,8 @@ spec:
         - name: model-cache
           persistentVolumeClaim:
             claimName: model-cache
+      nodeSelector:
+        gpu: "true"  # 只排程到有 GPU 的 Node
       tolerations:
         - key: nvidia.com/gpu
           operator: Exists

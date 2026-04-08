@@ -62,13 +62,21 @@ open http://localhost:8000
 git clone https://github.com/yanchen184/whisper-service.git
 cd whisper-service
 
-# Build image
+# 1. GPU Node 加 label（只需做一次）
+kubectl label node <gpu-node-1> gpu=true
+kubectl label node <gpu-node-2> gpu=true
+
+# 2. 修改設定
+#    k8s/pv.yaml     → NFS Server IP 和路徑
+#    k8s/ingress.yaml → 你的 domain
+
+# 3. Build image（在每台 Node 上，或用 registry）
 docker build -t whisper-service:latest -f api/Dockerfile .
 
-# 部署（修改 k8s/pv.yaml 的 NFS IP 和路徑後）
+# 4. 部署
 kubectl apply -k k8s/
 
-# 確認
+# 5. 確認
 kubectl get pods -n whisper
 kubectl port-forward -n whisper svc/api 8000:80
 open http://localhost:8000
