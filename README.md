@@ -1,117 +1,243 @@
 # Whisper 語音轉文字服務
 
-一鍵啟動的語音轉文字服務，基於 [faster-whisper](https://github.com/SYSTRAN/faster-whisper) 引擎，支援中英混用。
+即時語音轉文字 + 批次檔案轉錄服務，基於 [faster-whisper](https://github.com/SYSTRAN/faster-whisper) 引擎，支援中英混用。
+
+---
+
+## 技術架構
+
+```
+                        ┌─────────────────────────────────┐
+                        │          瀏覽器 Client           │
+                        │  ┌───────────┐  ┌────────────┐  │
+                        │  │ 即時轉錄   │  │ 檔案轉錄   │  │
+                        │  │ (麥克風)   │  │ (上傳檔案) │  │
+                        │  └─────┬─────┘  └─────┬──────┘  │
+                        └───────┼───────────────┼─────────┘
+                         WebSocket            HTTP POST
+                                │               │
+┌───────────────────────────────┼───────────────┼──────────┐
+│                        Ingress / Port 8000               │
+│  ┌───────────────────────────────────────────────────┐   │
+│  │              FastAPI (api container)               │   │
+│  │                                                   │   │
+│  │  WS /api/stream     即時轉錄（收音訊→轉錄→回傳）  │   │
+│  │  POST /api/transcribe  上傳→排隊                   │   │
+│  │  GET  /api/tasks/{id}  查詢狀態                    │   │
+│  │  GET  /api/models      模型列表                    │   │
+│  │  /                     前端靜態頁面                │   │
+│  └──────────────────────┬────────────────────────────┘   │
+│                         │                                │
+│              ┌──────────┼──────────┐                     │
+│              ▼                     ▼                     │
+│  ┌───────────────┐     ┌──────────────────┐              │
+│  │     Redis     │     │  Worker          │              │
+│  │  (任務佇列)   │────►│  (批次轉錄)     │              │
+│  │               │     │  faster-whisper  │              │
+│  └───────────────┘     └──────────────────┘              │
+│                                                          │
+│  Volumes:                                                │
+│    model-cache  → /root/.cache/huggingface (模型快取)    │
+│    upload-data  → /data (上傳檔案 + 轉錄結果)           │
+│    redis-data   → /data (Redis 持久化)                   │
+└──────────────────────────────────────────────────────────┘
+```
+
+## 技術棧
+
+| 層級 | 技術 | 說明 |
+|------|------|------|
+| **前端** | HTML / CSS / JavaScript | 單頁應用，內嵌即時轉錄 + 方案報告 |
+| **API** | Python 3.11 + FastAPI | REST API + WebSocket，async |
+| **即時轉錄** | WebSocket + MediaRecorder | 瀏覽器麥克風 → 每 5 秒送音訊片段 → 即時回傳文字 |
+| **批次轉錄** | arq + Redis | 非同步任務佇列，上傳後排隊處理 |
+| **轉錄引擎** | faster-whisper (CTranslate2) | 比原版 Whisper 快 4-8x，VRAM 省 50-70% |
+| **音訊處理** | ffmpeg | webm/mp4 → 16kHz mono wav 自動轉換 |
+| **容器化** | Docker / Docker Compose | 本機一鍵啟動 |
+| **部署** | Kubernetes + Kustomize | 生產環境部署 |
+| **CI/CD** | GitHub Actions | push 自動 build Docker image |
+
+---
+
+## 硬體需求
+
+### 本機開發 / Demo
+
+| 項目 | 最低 | 建議 |
+|------|------|------|
+| CPU | 4 核 | 8 核 |
+| RAM | 8 GB | 16 GB |
+| GPU | 不需要（CPU 可跑） | NVIDIA GPU（大幅加速） |
+| 磁碟 | 5 GB | 10 GB |
+| 可用模型 | tiny, base, small | + medium |
+
+### 生產環境（K8s）
+
+#### 最低配置（3-5 人同時使用）
+
+| Node | 規格 | 數量 | 用途 |
+|------|------|------|------|
+| GPU Node | 8 vCPU, 32GB RAM, **NVIDIA T4 16GB** | 1 | API + 即時轉錄 + 批次轉錄 |
+| CPU Node | 4 vCPU, 16GB RAM | 1 | Redis, Ingress |
+
+#### 建議配置（10-20 人同時使用）
+
+| Node | 規格 | 數量 | 用途 |
+|------|------|------|------|
+| GPU Node | 8 vCPU, 32GB RAM, **NVIDIA L4 24GB** | 2 | API + Worker |
+| CPU Node | 4 vCPU, 16GB RAM | 2 | Redis, Ingress |
+
+#### 各模型 GPU VRAM 需求
+
+| 模型 | 參數量 | VRAM (FP16) | VRAM (INT8) | 適合場景 |
+|------|--------|-------------|-------------|---------|
+| tiny | 39M | 0.5 GB | 0.3 GB | 快速測試 |
+| base | 74M | 0.7 GB | 0.4 GB | 一般用途（預設） |
+| small | 244M | 1 GB | 0.6 GB | 日常使用 |
+| medium | 769M | 2.5 GB | 1.5 GB | 會議記錄 |
+| large-v2 | 1.55B | 5 GB | 3 GB | 技術內容、英文術語 |
+| large-v3-turbo | 809M | 3 GB | 1.8 GB | 精度與速度兼顧 |
+| Breeze ASR 25 | 1.54B | 5 GB | 3 GB | 台灣華語、中英混用 |
+
+---
+
+## 模型選擇指南
+
+| 場景 | 推薦模型 | 理由 |
+|------|---------|------|
+| 快速 Demo | base | 小（142MB）、速度快 |
+| 一般中文會議 | small / medium | 品質與速度平衡 |
+| 英文技術術語（K8s, Docker 等） | **large-v2** | 英文術語辨識最佳 |
+| 台灣華語 + 中英混用 | **Breeze ASR 25** | 中英 code-switch WER 改善 56% |
+| 最高精度（不計速度） | large-v3 | WER 最低，但有幻覺風險 |
+| 精度與速度兼顧 | large-v3-turbo | 比 large 快 8 倍，精度接近 |
+
+> 詳細模型比較與實測數據見 [MODEL_COMPARISON.md](MODEL_COMPARISON.md)
+
+---
 
 ## 快速開始
 
+### 方式一：Docker Compose（本機）
+
 ```bash
-# 1. 啟動服務
+# 1. Clone
+git clone https://github.com/yanchen184/whisper-service.git
+cd whisper-service
+
+# 2. 啟動
 docker compose up -d
 
-# 2. 開瀏覽器
+# 3. 開瀏覽器
 open http://localhost:8000
 ```
 
-首次啟動會自動下載模型（預設 base，142MB），之後會快取不再重複下載。
+首次啟動會自動下載模型（預設 base，142MB），之後快取不重複下載。
 
-## 功能
-
-- **拖曳上傳**音檔或影片（MP3, WAV, MP4, M4A, FLAC, OGG）
-- **前端切換模型** — 從 Tiny 到 Large-v3，依需求選擇精度和速度
-- **即時進度**顯示
-- **下載結果** — TXT 純文字 / SRT 字幕 / JSON 結構化
-- **非同步處理** — 上傳後排隊，不阻塞
-
-## 模型選擇
-
-在前端頁面上方可以直接點選模型：
-
-| 模型 | 大小 | 速度 | 品質 | 適合場景 |
-|------|------|------|------|---------|
-| Tiny | 75 MB | 最快 | 低 | 快速測試 |
-| Base | 142 MB | 很快 | 普通 | 一般用途（預設） |
-| Small | 466 MB | 快 | 堪用 | 日常使用 |
-| Medium | 1.5 GB | 中等 | 好 | 會議記錄 |
-| Large-v2 | 2.9 GB | 慢 | 很好 | 技術內容（中英混用最佳） |
-| Large-v3 | 2.9 GB | 慢 | 最佳 | 最高精度（有幻覺風險） |
-| Large-v3 Turbo | 1.6 GB | 快 | 很好 | 精度與速度兼顧 |
-
-> 首次選用新模型時，Worker 會自動下載（僅一次），後續直接從快取載入。
-
-## 架構
-
-```
-瀏覽器 (localhost:8000)
-  │
-  ├─ 靜態頁面 (index.html)
-  │
-  └─ REST API
-       │
-       ├─ FastAPI (api container)
-       │    ├─ POST /api/transcribe    上傳音檔
-       │    ├─ GET  /api/tasks/{id}    查詢狀態
-       │    ├─ GET  /api/tasks/{id}/download  下載結果
-       │    └─ GET  /api/models        模型列表
-       │
-       ├─ Redis (redis container)
-       │    └─ 任務佇列 + 狀態快取
-       │
-       └─ Worker (worker container)
-            └─ faster-whisper 轉錄引擎
-```
-
-## 設定
-
-### 環境變數 (.env)
-
-| 變數 | 預設值 | 說明 |
-|------|--------|------|
-| `WHISPER_MODEL` | `base` | 預設模型（前端可覆蓋） |
-| `DEVICE` | `auto` | `auto` / `cuda` / `cpu` |
-| `COMPUTE_TYPE` | `int8` | `int8`(CPU) / `float16`(GPU) |
-
-### 啟用 GPU
-
-有 NVIDIA GPU + [nvidia-container-toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html) 的話：
-
-1. 編輯 `docker-compose.yml`，取消 worker 的 GPU 註解：
-
-```yaml
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-```
-
-2. 修改 `.env`：
-
-```
-DEVICE=cuda
-COMPUTE_TYPE=float16
-```
-
-3. 重啟：
+#### 啟用 GPU
 
 ```bash
+# 1. 取消 docker-compose.yml 中 worker 的 GPU 註解
+# 2. 修改 .env
+DEVICE=cuda
+COMPUTE_TYPE=float16
+
+# 3. 重啟
 docker compose up -d
 ```
 
-## API
+### 方式二：K8s 部署（生產）
 
 ```bash
-# 上傳（預設模型）
+# 1. 在 K8s node 上 build image
+git clone https://github.com/yanchen184/whisper-service.git
+cd whisper-service
+docker build -t whisper-service:latest ./api
+
+# 2. 一鍵部署
+kubectl apply -k k8s/
+
+# 3. 確認 Pod 狀態
+kubectl get pods -n whisper
+
+# 4. 修改 ingress.yaml 的 host 為你的 domain
+```
+
+---
+
+## 專案結構
+
+```
+whisper-service/
+├── api/                          # 後端
+│   ├── Dockerfile                # Docker 映像定義
+│   ├── requirements.txt          # Python 依賴
+│   └── app/
+│       ├── main.py               # FastAPI 進入點 + 模型預載
+│       ├── routes.py             # API 路由 + WebSocket 即時轉錄
+│       ├── tasks.py              # 轉錄任務邏輯 + 模型清單
+│       ├── worker.py             # arq Worker 設定
+│       ├── storage.py            # 檔案儲存 + SRT 產生
+│       ├── config.py             # 環境變數設定
+│       └── models.py             # Pydantic schemas
+│
+├── web/
+│   └── index.html                # 前端（即時轉錄 + 方案報告 + 系統架構）
+│
+├── k8s/                          # Kubernetes 部署檔
+│   ├── kustomization.yaml        # 一鍵部署: kubectl apply -k k8s/
+│   ├── namespace.yaml            # whisper namespace
+│   ├── configmap.yaml            # 模型、語言、Redis 等設定
+│   ├── secret.yaml               # 密碼
+│   ├── redis.yaml                # Redis StatefulSet + PVC
+│   ├── api-deployment.yaml       # API Deployment + GPU + Service
+│   ├── worker-deployment.yaml    # Worker Deployment + GPU
+│   └── ingress.yaml              # Ingress + WebSocket 支援
+│
+├── .github/workflows/
+│   └── docker-build.yml          # CI: 自動 build image → ghcr.io
+│
+├── docker-compose.yml            # 本機 Docker Compose
+├── .env                          # 環境變數（不入 git）
+├── MODEL_COMPARISON.md           # 方案評估報告（含實測數據）
+├── stream_server.py              # 獨立 WebSocket server（備用）
+├── start-stream.sh               # 本機即時轉錄啟動腳本
+├── run.sh                        # whisper.cpp CLI 腳本
+└── transcribe.py                 # Python 版轉錄腳本（備用）
+```
+
+---
+
+## API 文件
+
+### 即時轉錄（WebSocket）
+
+```
+WS /api/stream
+
+→ {"action": "start", "language": "zh"}     開始辨識
+→ {"action": "stop"}                         停止辨識
+→ (binary) 音訊片段                          每 5 秒自動送出
+
+← {"type": "status", "message": "started"}  狀態通知
+← {"type": "transcript", "text": "..."}     轉錄文字
+```
+
+### 批次轉錄（REST）
+
+```bash
+# 上傳音檔
 curl -X POST http://localhost:8000/api/transcribe \
   -F "file=@audio.wav"
+# → {"task_id": "xxx", "status": "queued"}
 
-# 上傳（指定模型）
+# 指定模型
 curl -X POST "http://localhost:8000/api/transcribe?model=large-v2" \
   -F "file=@audio.wav"
 
 # 查詢狀態
 curl http://localhost:8000/api/tasks/{task_id}
+# → {"status": "completed", "progress": 100, "result": {...}}
 
 # 下載結果
 curl http://localhost:8000/api/tasks/{task_id}/download?format=txt
@@ -122,52 +248,82 @@ curl http://localhost:8000/api/tasks/{task_id}/download?format=json
 curl http://localhost:8000/api/models
 ```
 
-## 停止服務
+---
 
-```bash
-docker compose down
-```
+## K8s 部署細節
 
-清除所有資料（模型快取、上傳檔案、轉錄結果）：
+### Volume（PVC）
 
-```bash
-docker compose down -v
+| PVC | 大小 | 用途 | 掛載到 |
+|-----|------|------|--------|
+| `model-cache` | 10Gi | 模型快取（自動下載，只下載一次） | API + Worker |
+| `upload-data` | 50Gi | 上傳音檔 + 轉錄結果 | API + Worker |
+| `redis-data` | 1Gi | Redis 持久化 | Redis |
+
+### Pod 資源配置
+
+| Pod | CPU | RAM | GPU | 用途 |
+|-----|-----|-----|-----|------|
+| api | 2-4 核 | 4-8 GB | 1x T4/L4 | 即時轉錄 + REST API + 前端 |
+| worker | 2-4 核 | 4-8 GB | 1x T4/L4 | 批次轉錄 |
+| redis | 0.1-0.5 核 | 128-512 MB | 無 | 任務佇列 |
+
+### Ingress 注意事項
+
+WebSocket 需要特別設定 timeout，否則連線會被 nginx 斷掉：
+
+```yaml
+nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+nginx.ingress.kubernetes.io/proxy-body-size: "500m"
 ```
 
 ---
 
-## CLI 工具（本地 whisper.cpp）
+## 環境變數
 
-除了 Docker 服務，也可以直接用 whisper.cpp CLI：
+| 變數 | 預設值 | 說明 |
+|------|--------|------|
+| `WHISPER_MODEL` | `base` | 批次轉錄預設模型 |
+| `STREAM_MODEL` | `base` | 即時轉錄模型 |
+| `DEVICE` | `auto` | `auto` / `cuda` / `cpu` |
+| `COMPUTE_TYPE` | `int8` | `int8`(CPU) / `float16`(GPU) |
+| `REDIS_URL` | `redis://redis:6379` | Redis 連線 |
+| `UPLOAD_DIR` | `/data/uploads` | 上傳目錄 |
+| `RESULT_DIR` | `/data/results` | 結果目錄 |
+
+---
+
+## 成本估算
+
+### 自建（K8s / GKE）
+
+| GPU | 月費（On-Demand） | 月費（Spot） | 同時使用人數 |
+|-----|------------------|-------------|-------------|
+| T4 16GB x1 | ~$255 | **~$80** | 3-5 人 |
+| L4 24GB x1 | ~$511 | **~$153** | 5-10 人 |
+| L4 24GB x2 | ~$1,022 | **~$306** | 10-20 人 |
+
+### OpenAI API（對比）
+
+| 模型 | 每分鐘 | 100hr/月 |
+|------|--------|---------|
+| gpt-4o-transcribe | $0.006 | $36 |
+| gpt-4o-mini-transcribe | $0.003 | $18 |
+
+> 每天超過 8 小時音訊，自建比 OpenAI API 划算。
+
+---
+
+## 停止服務
 
 ```bash
-# 一鍵轉錄
-./run.sh <影片或音頻檔案>
+# Docker Compose
+docker compose down
 
-# 範例
-./run.sh ~/Desktop/lecture.mov
-./run.sh recording.wav
+# 清除所有資料（模型快取、上傳、結果）
+docker compose down -v
+
+# K8s
+kubectl delete -k k8s/
 ```
-
-### CLI 參數
-
-| 參數 | 說明 | 範例 |
-|------|------|------|
-| `-m` | 模型路徑 | `models/ggml-large-v2.bin` |
-| `-f` | 音頻檔案 | `output.wav` |
-| `-l` | 語言 | `zh`（中文）、`en`（英文）、`auto` |
-| `-osrt` | 輸出 SRT 字幕 | 自動產生 `.srt` |
-| `-otxt` | 輸出純文字 | 自動產生 `.txt` |
-
-### 批次處理
-
-```bash
-for f in ~/Desktop/*.mov; do ./run.sh "$f"; done
-```
-
-## 技術筆記
-
-- whisper.cpp 使用 Metal GPU 加速，比 Python 版快 10x+
-- faster-whisper (Docker 版) 使用 CTranslate2，比原版 Whisper 快 4-8x
-- 音頻必須是 16kHz 單聲道 WAV（ffmpeg 自動轉換）
-- 詳細模型比較見 [MODEL_COMPARISON.md](MODEL_COMPARISON.md)
