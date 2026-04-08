@@ -9,15 +9,22 @@
 ## 架構
 
 ```
-瀏覽器（麥克風）
-    │ WebSocket（每 5 秒送一段音訊）
+瀏覽器（麥克風 + 前端 VAD）
+    │
+    ▼
+┌──────────────────────────────┐
+│  Nginx (web container)       │
+│  /        前端頁面            │
+│  /api/*   反向代理 → api      │
+└──────────────────────────────┘
+    │ WebSocket（偵測語音停頓後送出片段）
     ▼
 ┌──────────────────────────────┐
 │  FastAPI (api container)     │
 │                              │
 │  WS /api/stream  即時轉錄    │
 │  GET /api/health 健康檢查    │
-│  /               前端頁面    │
+│  GET /api/config VAD 參數    │
 │                              │
 │  faster-whisper (GPU/CPU)    │
 │  ffmpeg pipe (webm → wav)    │
@@ -32,7 +39,7 @@
 | 層級 | 技術 |
 |------|------|
 | 前端 | HTML / CSS / JavaScript（單頁） |
-| 通訊 | WebSocket（瀏覽器麥克風 → 後端） |
+| 通訊 | WebSocket + 前端 VAD（語音斷點自動切段） |
 | 後端 | Python 3.11 + FastAPI |
 | 轉錄引擎 | faster-whisper（CTranslate2） |
 | 音訊處理 | ffmpeg pipe 模式（webm → 16kHz wav） |
@@ -127,8 +134,13 @@ open http://localhost:8000
 | `STREAM_MODEL` | `phate334/Breeze-ASR-25-ct2` | 模型（main）/ `base`（local） |
 | `DEVICE` | `auto` | `auto` / `cuda` / `cpu` |
 | `COMPUTE_TYPE` | `int8` | `int8`(CPU) / `float16`(GPU) |
-| `MAX_CONNECTIONS` | `5` | 最大同時連線數 |
+| `MAX_CONNECTIONS` | `20` | 最大同時連線數 |
 | `CORS_ORIGINS` | `*` | 允許的 CORS origin（逗號分隔） |
+| `DEFAULT_LANGUAGE` | `zh` | 預設辨識語言（zh/en/auto） |
+| `VAD_SILENCE_THRESHOLD` | `0.015` | 前端 VAD 靜音判定閾值（RMS） |
+| `VAD_SILENCE_DURATION_MS` | `800` | 靜音超過此毫秒數才切段 |
+| `VAD_MIN_SPEECH_MS` | `500` | 最短語音長度（過短丟棄） |
+| `VAD_MAX_CHUNK_MS` | `10000` | 最長片段（強制切段） |
 
 ---
 
@@ -141,7 +153,7 @@ WS /api/stream
 
 → {"action": "start", "language": "zh"}   開始
 → {"action": "stop"}                       停止
-→ (binary) 音訊片段                        每 5 秒
+→ (binary) 音訊片段                        VAD 偵測停頓後送出
 
 ← {"type": "status", "message": "started"}
 ← {"type": "transcript", "text": "..."}
@@ -170,16 +182,20 @@ whisper-service/
 │       ├── main.py         # FastAPI + 模型預載
 │       └── routes.py       # WebSocket 即時轉錄 + /health
 ├── web/
-│   └── index.html          # 前端
+│   ├── Dockerfile          # Nginx 前端 image
+│   ├── nginx.conf          # 反向代理設定
+│   └── index.html          # 前端頁面
 ├── k8s/
 │   ├── kustomization.yaml  # kubectl apply -k k8s/
 │   ├── namespace.yaml
 │   ├── configmap.yaml
 │   ├── pv.yaml             # NFS (main) / local-path (local)
 │   ├── pvc.yaml
-│   ├── deployment.yaml     # GPU (main) / CPU (local)
-│   ├── service.yaml
-│   └── ingress.yaml
+│   ├── deployment.yaml     # API: GPU (main) / CPU (local)
+│   ├── service.yaml        # API Service
+│   ├── web-deployment.yaml # 前端 Nginx
+│   ├── web-service.yaml    # 前端 Service
+│   └── ingress.yaml        # 路由分流（/api → api, / → web）
 ├── .github/workflows/
 │   └── docker-build.yml
 ├── docker-compose.yml

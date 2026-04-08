@@ -1,10 +1,8 @@
 import logging
 from contextlib import asynccontextmanager
-from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from app.config import CORS_ORIGINS
 from app.routes import router, _get_stream_model
@@ -30,8 +28,3 @@ app.add_middleware(
 )
 
 app.include_router(router)
-
-web_dir = Path("/web")
-if not web_dir.exists():
-    web_dir = Path(__file__).resolve().parent.parent.parent / "web"
-app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="static")
