@@ -21,16 +21,16 @@
 |------|------|------|------|
 | GPU Node | 8 vCPU, 32GB RAM, NVIDIA L4 24GB | 2 台 | 每台跑 1 個 API Pod，各自載入模型獨立運算 |
 | 磁碟 | NFS 共享儲存 | 1 份 | model-cache 10Gi，模型下載一次兩台共用 |
-**地端自建參考（每台 GPU Node）**：
+**地端自建參考（每台 Node）**：
 
-| 項目 | 最低規格 |
-|------|---------|
-| CPU | 8 核以上（Intel Xeon / AMD EPYC） |
-| RAM | 32 GB |
-| GPU | NVIDIA L4 24GB 或 T4 16GB 或 RTX 4090 24GB |
-| 磁碟 | SSD 100GB（系統 + Docker image + 模型快取） |
-| OS | Ubuntu 22.04 + NVIDIA Driver 535+ + CUDA 12.x |
-| K8s | NVIDIA GPU Operator 已安裝 |
+| 項目 | 最低規格（local 分支） | 生產規格（main 分支） |
+|------|----------------------|---------------------|
+| CPU | 4 核 | 8 核以上（Intel Xeon / AMD EPYC） |
+| RAM | 8 GB | 32 GB |
+| GPU | 不需要 | NVIDIA L4 24GB 或 T4 16GB 或 RTX 4090 24GB |
+| 磁碟 | SSD 50GB | SSD 100GB |
+| OS | Ubuntu 22.04 | Ubuntu 22.04 + NVIDIA Driver 535+ + CUDA 12.x |
+| K8s | K3s / Docker Desktop K8s | K8s + NVIDIA GPU Operator |
 
 ### 使用模型
 
