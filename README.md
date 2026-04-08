@@ -60,7 +60,70 @@ git checkout local  # 本機測試用 local 分支
 cp .env.example .env
 docker compose up -d
 
-open http://localhost:8000
+open http://localhost:8081
+```
+
+### 本機 K8s 測試（Docker Desktop）
+
+> Docker Desktop 內建 K8s，image 與本機 Docker 共用，不需另外匯入
+
+```bash
+git checkout local
+
+# 1. 啟用 K8s
+#    Docker Desktop → Settings → Kubernetes → Enable Kubernetes → Apply & Restart
+#    等待左下角 Kubernetes 圖示變綠色
+
+# 2. 確認 kubectl 指向 Docker Desktop
+kubectl config use-context docker-desktop
+kubectl get nodes   # 應該看到一個 Ready 的 node
+
+# 3. Build image
+docker build -t whisper-api:latest -f api/Dockerfile .
+docker build -t whisper-web:latest -f web/Dockerfile web/
+
+# 4. 部署
+kubectl apply -k k8s/
+
+# 5. 確認 Pod Running（首次模型下載需等幾分鐘）
+kubectl get pods -n whisper -w
+
+# 6. 測試
+kubectl port-forward -n whisper svc/web 8080:80
+open http://localhost:8080
+```
+
+### 本機 K8s 測試（k3d）
+
+> **k3d vs Docker Desktop K8s 差別**：
+> - Docker Desktop K8s 共用本機 Docker image，不需匯入；k3d 有獨立 image 空間，需要 `k3d image import`
+> - Docker Desktop K8s 只有一個固定叢集；k3d 可以建立多個獨立叢集，互不影響
+> - Docker Desktop K8s 跑的是完整 K8s；k3d 跑的是 K3s（輕量版 K8s），資源佔用更少
+> - 沒有 Docker Desktop（例如 Linux）或想要獨立叢集時，用 k3d
+
+```bash
+git checkout local
+
+# 安裝 k3d
+brew install k3d
+
+# 建立叢集
+k3d cluster create whisper
+
+# Build image 並匯入 k3d（k3d 有獨立的 image 空間，需要手動匯入）
+docker build -t whisper-api:latest -f api/Dockerfile .
+docker build -t whisper-web:latest -f web/Dockerfile web/
+k3d image import whisper-api:latest whisper-web:latest -c whisper
+
+# 部署
+kubectl apply -k k8s/
+
+# 確認 Pod Running
+kubectl get pods -n whisper -w
+
+# 測試
+kubectl port-forward -n whisper svc/web 8080:80
+open http://localhost:8080
 ```
 
 ### K8s 部署（生產）
@@ -85,16 +148,27 @@ kubectl label node <你的GPU機器名稱> gpu=true
 #    k8s/pv.yaml     → NFS Server IP 和路徑
 #    k8s/ingress.yaml → 你的 domain
 
-# 3. Build image（在每台 Node 上，或用 registry）
-docker build -t whisper-service:latest -f api/Dockerfile .
+# 3. Build & Push image
+#    方法 A：用 registry（推薦，build 一次所有 Node 都能拉）
+REGISTRY=your-registry.com/whisper   # 改成你的 registry
+docker build -t $REGISTRY/api:latest -f api/Dockerfile .
+docker build -t $REGISTRY/web:latest -f web/Dockerfile web/
+docker push $REGISTRY/api:latest
+docker push $REGISTRY/web:latest
+#    然後修改 k8s/deployment.yaml 和 k8s/web-deployment.yaml 的 image 欄位
+#    並將 imagePullPolicy 改為 Always
+
+#    方法 B：無 registry（每台 Node 都要 build）
+docker build -t whisper-api:latest -f api/Dockerfile .
+docker build -t whisper-web:latest -f web/Dockerfile web/
 
 # 4. 部署
 kubectl apply -k k8s/
 
 # 5. 確認
 kubectl get pods -n whisper
-kubectl port-forward -n whisper svc/api 8000:80
-open http://localhost:8000
+kubectl port-forward -n whisper svc/web 8080:80
+open http://localhost:8080
 ```
 
 ---
@@ -108,6 +182,7 @@ open http://localhost:8000
 | CPU | 4 核 |
 | RAM | 8 GB |
 | GPU | 不需要 |
+| 磁碟 | 5 GB（模型快取） |
 
 ### 生產環境（main 分支，Breeze ASR 25，10 人同時使用）
 
@@ -120,9 +195,8 @@ open http://localhost:8000
 
 | 模型 | VRAM (FP16) | 適合場景 |
 |------|-------------|---------|
-| base | 0.7 GB | 本機測試 |
-| small | 1 GB | 日常使用 |
 | large-v2 | 5 GB | 英文技術術語 |
+| large-v3 | 5 GB | 多語言通用（OpenAI 最新） |
 | Breeze ASR 25 | 5 GB | 台灣華語、中英混用（預設） |
 
 ---
