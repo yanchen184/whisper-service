@@ -131,64 +131,13 @@
   <p class="subtitle">上傳音檔或影片，自動轉錄為文字</p>
 
   <div class="tabs">
-    <div class="tab active" onclick="switchTab('tool')">轉錄工具</div>
-    <div class="tab" onclick="switchTab('stream')">即時轉錄</div>
+    <div class="tab active" onclick="switchTab('stream')">即時轉錄</div>
     <div class="tab" onclick="switchTab('docs')">方案評估報告</div>
     <div class="tab" onclick="switchTab('arch')">系統架構</div>
   </div>
 
-  <!-- Tab 1: 轉錄工具 -->
-  <div class="tab-content active" id="tab-tool">
-    <div class="model-selector">
-      <label>選擇模型（越大越準，但越慢、需更多記憶體）</label>
-      <div class="model-grid" id="modelGrid">
-        <div class="model-loading">載入模型列表中...</div>
-      </div>
-    </div>
-
-    <div class="drop-zone" id="dropZone">
-      <div class="icon">&#127908;</div>
-      <div>拖曳檔案到這裡，或點擊選擇檔案</div>
-      <p>支援 MP3, WAV, MP4, M4A, FLAC, OGG（上限 500MB）</p>
-      <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.wav,.mp4,.m4a,.flac,.ogg">
-    </div>
-
-    <div class="recorder" id="recorder">
-      <button class="rec-btn idle" id="recBtn" onclick="toggleRecording()">
-        <div class="rec-icon"></div>
-      </button>
-      <div class="rec-info">
-        <div class="rec-timer" id="recTimer">00:00</div>
-        <div class="rec-hint" id="recHint">點擊紅色按鈕開始錄音</div>
-      </div>
-      <div class="rec-wave hidden" id="recWave">
-        <span></span><span></span><span></span><span></span><span></span>
-      </div>
-    </div>
-
-    <div class="status-card" id="statusCard">
-      <div class="status-header">
-        <span class="filename" id="fileName"></span>
-        <span class="status-badge" id="statusBadge"></span>
-      </div>
-      <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
-      <div id="progressText" style="color:#94a3b8;font-size:0.85rem;margin-bottom:1rem;"></div>
-      <div class="error-msg" id="errorMsg" style="display:none;"></div>
-
-      <div class="result-area" id="resultArea" style="display:none;">
-        <div class="result-meta" id="resultMeta"></div>
-        <div class="result-text" id="resultText"></div>
-        <div class="download-btns">
-          <button class="btn btn-primary" onclick="download('txt')">&#128196; 下載 TXT</button>
-          <button class="btn btn-outline" onclick="download('srt')">&#127916; 下載 SRT</button>
-          <button class="btn btn-outline" onclick="download('json')">&#128203; 下載 JSON</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Tab 2: 即時轉錄 -->
-  <div class="tab-content" id="tab-stream">
+  <!-- 即時轉錄 -->
+  <div class="tab-content active" id="tab-stream">
     <div class="stream-lang">
       <label><input type="radio" name="streamLang" value="zh" checked> 中文</label>
       <label><input type="radio" name="streamLang" value="en"> English</label>
@@ -211,7 +160,7 @@
     </div>
 
     <div style="margin-top:1rem;color:#64748b;font-size:0.8rem;">
-      即時轉錄使用本機麥克風 + whisper.cpp stream（small 模型）。需在本機執行，不支援 Docker 容器。
+      即時轉錄：瀏覽器麥克風 → WebSocket → faster-whisper（base 模型）。每 3 秒送出一段音訊即時辨識。
     </div>
   </div>
 
@@ -604,57 +553,6 @@ segments, info = model.transcribe(
 </div>
 
 <script>
-/* ---- Recording ---- */
-let mediaRecorder = null;
-let audioChunks = [];
-let recStartTime = null;
-let recTimerInterval = null;
-
-async function toggleRecording() {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    stopRecording();
-  } else {
-    await startRecording();
-  }
-}
-
-async function startRecording() {
-  try {
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    mediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMime() });
-    audioChunks = [];
-
-    mediaRecorder.ondataavailable = e => { if (e.data.size > 0) audioChunks.push(e.data); };
-    mediaRecorder.onstop = () => {
-      stream.getTracks().forEach(t => t.stop());
-      const duration = (Date.now() - recStartTime) / 1000;
-      if (duration < 1) {
-        document.getElementById('recHint').textContent = '錄音太短（至少 1 秒），請重試';
-        return;
-      }
-      const ext = mediaRecorder.mimeType.includes('webm') ? 'webm' : 'mp4';
-      const blob = new Blob(audioChunks, { type: mediaRecorder.mimeType });
-      const file = new File([blob], `recording_${Date.now()}.${ext}`, { type: mediaRecorder.mimeType });
-      uploadFile(file);
-    };
-
-    mediaRecorder.start(1000);
-    recStartTime = Date.now();
-    updateRecUI(true);
-    recTimerInterval = setInterval(updateRecTimer, 200);
-  } catch (e) {
-    alert('無法存取麥克風，請確認瀏覽器已授權麥克風權限。');
-  }
-}
-
-function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state === 'recording') {
-    mediaRecorder.stop();
-    updateRecUI(false);
-    clearInterval(recTimerInterval);
-  }
-}
-
 function getSupportedMime() {
   for (const mime of ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg']) {
     if (MediaRecorder.isTypeSupported(mime)) return mime;
@@ -662,41 +560,27 @@ function getSupportedMime() {
   return '';
 }
 
-function updateRecUI(recording) {
-  const btn = document.getElementById('recBtn');
-  const hint = document.getElementById('recHint');
-  const wave = document.getElementById('recWave');
-  if (recording) {
-    btn.className = 'rec-btn recording';
-    hint.textContent = '錄音中... 點擊停止並送出轉錄';
-    wave.classList.remove('hidden');
-  } else {
-    btn.className = 'rec-btn idle';
-    hint.textContent = '點擊紅色按鈕開始錄音';
-    wave.classList.add('hidden');
-    document.getElementById('recTimer').textContent = '00:00';
-  }
-}
-
-function updateRecTimer() {
-  if (!recStartTime) return;
-  const sec = Math.floor((Date.now() - recStartTime) / 1000);
-  const m = Math.floor(sec / 60).toString().padStart(2, '0');
-  const s = (sec % 60).toString().padStart(2, '0');
-  document.getElementById('recTimer').textContent = `${m}:${s}`;
-}
-
 /* ---- Stream ---- */
 let streamWs = null;
 let isStreaming = false;
+let streamRecorder = null;
+let streamMicStream = null;
 
 function toggleStream() {
   if (isStreaming) stopStream();
   else startStream();
 }
 
-function startStream() {
+async function startStream() {
   const lang = document.querySelector('input[name="streamLang"]:checked').value;
+
+  try {
+    streamMicStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    alert('無法存取麥克風，請確認瀏覽器已授權。');
+    return;
+  }
+
   const wsUrl = `ws://${location.host}/api/stream`;
   streamWs = new WebSocket(wsUrl);
 
@@ -711,6 +595,7 @@ function startStream() {
       if (data.message === 'started') {
         isStreaming = true;
         updateStreamUI('listening');
+        startMicCapture();
       } else if (data.message === 'stopped') {
         isStreaming = false;
         updateStreamUI('disconnected');
@@ -721,21 +606,43 @@ function startStream() {
       appendStreamText(data.text);
     } else if (data.type === 'error') {
       alert(data.message);
-      isStreaming = false;
-      updateStreamUI('disconnected');
+      stopStream();
     }
   };
 
   streamWs.onclose = () => {
     isStreaming = false;
+    stopMicCapture();
     updateStreamUI('disconnected');
   };
 
   streamWs.onerror = () => {
-    isStreaming = false;
-    updateStreamUI('disconnected');
-    alert('無法連線到串流伺服器\n請先執行: python stream_server.py');
+    stopStream();
+    alert('無法連線到伺服器，請確認 docker compose up 已啟動。');
   };
+}
+
+function startMicCapture() {
+  if (!streamMicStream) return;
+  const mime = getSupportedMime();
+  streamRecorder = new MediaRecorder(streamMicStream, { mimeType: mime });
+  streamRecorder.ondataavailable = (e) => {
+    if (e.data.size > 0 && streamWs && streamWs.readyState === WebSocket.OPEN) {
+      streamWs.send(e.data);
+    }
+  };
+  streamRecorder.start(3000);
+}
+
+function stopMicCapture() {
+  if (streamRecorder && streamRecorder.state === 'recording') {
+    streamRecorder.stop();
+  }
+  if (streamMicStream) {
+    streamMicStream.getTracks().forEach(t => t.stop());
+    streamMicStream = null;
+  }
+  streamRecorder = null;
 }
 
 function stopStream() {
@@ -743,6 +650,7 @@ function stopStream() {
     streamWs.send(JSON.stringify({ action: 'stop' }));
     streamWs.close();
   }
+  stopMicCapture();
   isStreaming = false;
   updateStreamUI('disconnected');
 }
@@ -761,9 +669,8 @@ function updateStreamUI(state) {
     btn.textContent = '停止辨識'; btn.className = 'stream-btn stop';
     dot.className = 'dot listening'; st.textContent = '辨識中... 對著麥克風說話';
   } else if (state === 'loading') {
-    btn.textContent = '載入中...'; btn.className = 'stream-btn stop'; btn.disabled = true;
+    btn.textContent = '載入中...'; btn.className = 'stream-btn stop';
     dot.className = 'dot loading'; st.textContent = '模型載入中...';
-    setTimeout(() => { btn.disabled = false; }, 0);
   } else {
     btn.textContent = '開始辨識'; btn.className = 'stream-btn start';
     dot.className = 'dot disconnected'; st.textContent = '未連線';
@@ -785,174 +692,13 @@ function copyStreamText() {
 /* ---- Tabs ---- */
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach((t, i) => {
-    const tabs = ['tool', 'stream', 'docs', 'arch'];
+    const tabs = ['stream', 'docs', 'arch'];
     t.classList.toggle('active', tabs[i] === name);
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
   document.getElementById('tab-' + name).classList.add('active');
 }
 
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const statusCard = document.getElementById('statusCard');
-let currentTaskId = null;
-let pollTimer = null;
-let selectedModel = '';
-
-async function loadModels() {
-  try {
-    const res = await fetch('/api/models');
-    const data = await res.json();
-    selectedModel = data.default;
-    const grid = document.getElementById('modelGrid');
-    grid.innerHTML = data.models.map(m => `
-      <div class="model-card ${m.id === data.default ? 'selected' : ''}" data-model="${m.id}" onclick="selectModel('${m.id}')">
-        <div class="model-name">${m.name} ${m.id === data.default ? '(預設)' : ''}</div>
-        <div class="model-info">${m.size} | ${m.speed}</div>
-        <div class="model-quality">品質: ${m.quality}</div>
-      </div>
-    `).join('');
-  } catch (e) {
-    document.getElementById('modelGrid').innerHTML = '<div class="model-loading">無法載入模型列表</div>';
-  }
-}
-
-function selectModel(id) {
-  selectedModel = id;
-  document.querySelectorAll('.model-card').forEach(el => {
-    el.classList.toggle('selected', el.dataset.model === id);
-  });
-}
-
-loadModels();
-
-dropZone.addEventListener('click', () => fileInput.click());
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-dropZone.addEventListener('drop', e => {
-  e.preventDefault();
-  dropZone.classList.remove('dragover');
-  if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
-});
-fileInput.addEventListener('change', () => { if (fileInput.files.length) uploadFile(fileInput.files[0]); });
-
-async function uploadFile(file) {
-  statusCard.style.display = 'block';
-  document.getElementById('fileName').textContent = file.name;
-  document.getElementById('resultArea').style.display = 'none';
-  document.getElementById('errorMsg').style.display = 'none';
-  setBadge('queued', '上傳中...');
-  setProgress(0, '上傳中...');
-
-  const form = new FormData();
-  form.append('file', file);
-
-  try {
-    const url = selectedModel ? `/api/transcribe?model=${selectedModel}` : '/api/transcribe';
-    const res = await fetch(url, { method: 'POST', body: form });
-    if (!res.ok) {
-      const err = await res.json();
-      throw new Error(err.detail || 'Upload failed');
-    }
-    const data = await res.json();
-    currentTaskId = data.task_id;
-    setBadge('queued', '排隊中');
-    startPolling();
-  } catch (e) {
-    setBadge('failed', '失敗');
-    showError(e.message);
-  }
-}
-
-function startPolling() {
-  if (pollTimer) clearInterval(pollTimer);
-  pollTimer = setInterval(pollStatus, 2000);
-  pollStatus();
-}
-
-async function pollStatus() {
-  if (!currentTaskId) return;
-  try {
-    const res = await fetch(`/api/tasks/${currentTaskId}`);
-    const data = await res.json();
-
-    if (data.status === 'queued') {
-      setBadge('queued', '排隊中');
-      setProgress(0, '等待處理...');
-    } else if (data.status === 'processing') {
-      setBadge('processing', '轉錄中');
-      setProgress(data.progress, `轉錄中... ${data.progress}%`);
-    } else if (data.status === 'completed') {
-      clearInterval(pollTimer);
-      setBadge('completed', '完成');
-      setProgress(100, '轉錄完成');
-      showResult(data.result);
-    } else if (data.status === 'failed') {
-      clearInterval(pollTimer);
-      setBadge('failed', '失敗');
-      showError(data.error || 'Unknown error');
-    }
-  } catch (e) {
-    console.error('Poll error:', e);
-  }
-}
-
-function setBadge(status, text) {
-  const badge = document.getElementById('statusBadge');
-  badge.textContent = text;
-  badge.className = `status-badge badge-${status}`;
-}
-
-function setProgress(pct, text) {
-  document.getElementById('progressFill').style.width = pct + '%';
-  document.getElementById('progressText').textContent = text;
-}
-
-function showError(msg) {
-  const el = document.getElementById('errorMsg');
-  el.textContent = msg;
-  el.style.display = 'block';
-}
-
-function showResult(result) {
-  if (!result) return;
-  document.getElementById('resultArea').style.display = 'block';
-
-  const lang = result.language || '?';
-  const dur = result.duration ? (result.duration / 60).toFixed(1) : '?';
-  const elapsed = result.elapsed || '?';
-  const model = result.model || '?';
-  document.getElementById('resultMeta').textContent =
-    `語言: ${lang} | 音檔長度: ${dur} 分鐘 | 處理時間: ${elapsed}s | 模型: ${model}`;
-
-  const segments = result.segments || [];
-  if (segments.length > 0) {
-    document.getElementById('resultText').innerHTML = segments.map(s => {
-      const start = formatTime(s.start);
-      const end = formatTime(s.end);
-      return `<span style="color:#64748b">[${start} - ${end}]</span> ${escapeHtml(s.text)}`;
-    }).join('\n');
-  } else {
-    document.getElementById('resultText').textContent = result.text || '(no text)';
-  }
-}
-
-function formatTime(sec) {
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-}
-
-function escapeHtml(str) {
-  const d = document.createElement('div');
-  d.textContent = str;
-  return d.innerHTML;
-}
-
-function download(fmt) {
-  if (!currentTaskId) return;
-  window.open(`/api/tasks/${currentTaskId}/download?format=${fmt}`, '_blank');
-}
 </script>
 </body>
 </html>

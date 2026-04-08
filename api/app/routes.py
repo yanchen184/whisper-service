@@ -1,7 +1,10 @@
 import asyncio
+import io
 import json
+import logging
 import os
-import re
+import subprocess
+import tempfile
 import uuid
 from datetime import datetime, timezone
 
@@ -9,27 +12,43 @@ from arq.connections import ArqRedis
 from fastapi import APIRouter, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
 
-from app.config import MAX_FILE_SIZE, WHISPER_MODEL
+from app.config import COMPUTE_TYPE, DEVICE, MAX_FILE_SIZE, WHISPER_MODEL
 from app.models import TaskResponse, TaskStatus
 from app.storage import generate_srt, load_result, save_upload
 from app.tasks import AVAILABLE_MODELS
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter(prefix="/api")
 
-# Stream state
+# Stream: 共用一個 model instance（lazy load）
+_stream_model = None
 _stream_lock = asyncio.Lock()
-_stream_process = None
 
-WHISPER_STREAM_BIN = os.environ.get("WHISPER_STREAM_BIN", "/opt/homebrew/bin/whisper-stream")
-STREAM_MODEL_PATH = os.environ.get(
-    "STREAM_MODEL_PATH",
-    os.path.join(os.path.dirname(__file__), "..", "..", "models", "ggml-small.bin"),
-)
+
+def _get_stream_model():
+    global _stream_model
+    if _stream_model is None:
+        from faster_whisper import WhisperModel
+        device = DEVICE
+        compute_type = COMPUTE_TYPE
+        if device == "auto":
+            try:
+                import ctranslate2
+                device = "cuda" if "cuda" in ctranslate2.get_supported_compute_types("cuda") else "cpu"
+            except Exception:
+                device = "cpu"
+        if device == "cuda" and compute_type == "int8":
+            compute_type = "float16"
+        # 即時轉錄用 base 模型（速度優先）
+        stream_model_id = os.environ.get("STREAM_MODEL", "base")
+        logger.info("Loading stream model=%s device=%s compute_type=%s", stream_model_id, device, compute_type)
+        _stream_model = WhisperModel(stream_model_id, device=device, compute_type=compute_type)
+    return _stream_model
 
 
 @router.websocket("/stream")
 async def websocket_stream(ws: WebSocket):
-    global _stream_process
     await ws.accept()
 
     if _stream_lock.locked():
@@ -38,71 +57,76 @@ async def websocket_stream(ws: WebSocket):
         return
 
     async with _stream_lock:
-        process = None
-        stdout_task = None
+        model = None
+        language = "zh"
+        is_streaming = False
+
         try:
             while True:
-                data = json.loads(await ws.receive_text())
+                msg = await ws.receive()
 
-                if data["action"] == "start":
-                    if process:
-                        process.terminate()
-                        await process.wait()
+                # 文字訊息（控制指令）
+                if "text" in msg:
+                    data = json.loads(msg["text"])
 
-                    lang = data.get("language", "zh")
-                    await ws.send_json({"type": "status", "message": "loading"})
+                    if data["action"] == "start":
+                        language = data.get("language", "zh")
+                        if language == "auto":
+                            language = None
+                        await ws.send_json({"type": "status", "message": "loading"})
+                        model = await asyncio.to_thread(_get_stream_model)
+                        is_streaming = True
+                        await ws.send_json({"type": "status", "message": "started"})
 
-                    process = await asyncio.create_subprocess_exec(
-                        WHISPER_STREAM_BIN,
-                        "-m", STREAM_MODEL_PATH,
-                        "-l", lang,
-                        "--step", "3000",
-                        "--length", "10000",
-                        "--keep", "200",
-                        "--keep-context",
-                        "-t", "4",
-                        "-c", "-1",
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE,
-                    )
-                    _stream_process = process
+                    elif data["action"] == "stop":
+                        is_streaming = False
+                        await ws.send_json({"type": "status", "message": "stopped"})
 
-                    async def read_stdout():
-                        try:
-                            async for line in process.stdout:
-                                text = line.decode("utf-8", errors="replace").strip()
-                                text = re.sub(r"\[[\d:.]+\s*-->\s*[\d:.]+\]\s*", "", text)
-                                if text and not text.startswith(("init:", "whisper_", "ggml_", "load_")):
-                                    await ws.send_json({"type": "transcript", "text": text})
-                        except Exception:
-                            pass
+                # 二進位訊息（音訊片段）
+                elif "bytes" in msg and is_streaming and model is not None:
+                    audio_bytes = msg["bytes"]
+                    if len(audio_bytes) < 1000:
+                        continue
 
-                    stdout_task = asyncio.create_task(read_stdout())
-                    await ws.send_json({"type": "status", "message": "started"})
-
-                elif data["action"] == "stop":
-                    if process:
-                        process.terminate()
-                        await process.wait()
-                        process = None
-                        _stream_process = None
-                    if stdout_task:
-                        stdout_task.cancel()
-                        stdout_task = None
-                    await ws.send_json({"type": "status", "message": "stopped"})
+                    # 寫入暫存檔，用 ffmpeg 轉 wav，再餵給 faster-whisper
+                    try:
+                        text = await asyncio.to_thread(
+                            _transcribe_chunk, model, audio_bytes, language
+                        )
+                        if text.strip():
+                            await ws.send_json({"type": "transcript", "text": text.strip()})
+                    except Exception as e:
+                        logger.warning("Stream transcribe error: %s", e)
 
         except (WebSocketDisconnect, Exception):
             pass
-        finally:
-            if process:
-                process.terminate()
-                try:
-                    await asyncio.wait_for(process.wait(), timeout=5)
-                except asyncio.TimeoutError:
-                    process.kill()
-                _stream_process = None
-            if stdout_task:
-                stdout_task.cancel()
+
+
+def _transcribe_chunk(model, audio_bytes: bytes, language) -> str:
+    """把音訊片段轉成文字（同步，跑在 thread 裡）"""
+    with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as f:
+        f.write(audio_bytes)
+        webm_path = f.name
+
+    wav_path = webm_path.replace(".webm", ".wav")
+    try:
+        subprocess.run(
+            ["ffmpeg", "-y", "-i", webm_path, "-ar", "16000", "-ac", "1", "-c:a", "pcm_s16le", wav_path],
+            capture_output=True, check=True,
+        )
+        segments, _ = model.transcribe(
+            wav_path,
+            language=language,
+            vad_filter=True,
+            condition_on_previous_text=True,
+        )
+        return "".join(seg.text for seg in segments)
+    finally:
+        for p in (webm_path, wav_path):
+            try:
+                os.unlink(p)
+            except OSError:
+                pass
 
 
 @router.get("/models")
