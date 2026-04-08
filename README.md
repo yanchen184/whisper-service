@@ -63,8 +63,16 @@ git clone https://github.com/yanchen184/whisper-service.git
 cd whisper-service
 
 # 1. GPU Node 加 label（只需做一次）
-kubectl label node <gpu-node-1> gpu=true
-kubectl label node <gpu-node-2> gpu=true
+#    叢集裡有些機器有 GPU、有些沒有，K8s 不知道哪台有
+#    你要自己貼標籤告訴它，Pod 才會排到正確的機器上
+#
+#    先看有哪些 Node：
+kubectl get nodes
+#    幫有 GPU 的機器貼 gpu=true 標籤：
+kubectl label node <你的GPU機器名稱> gpu=true
+#    例如：
+#      kubectl label node gpu-server-01 gpu=true
+#      kubectl label node gpu-server-02 gpu=true
 
 # 2. 修改設定
 #    k8s/pv.yaml     → NFS Server IP 和路徑
