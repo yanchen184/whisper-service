@@ -4,6 +4,6 @@ metadata:
   name: whisper-config
   namespace: whisper
 data:
-  STREAM_MODEL: "phate334/Breeze-ASR-25-ct2"
-  DEVICE: "cuda"
-  COMPUTE_TYPE: "float16"
+  STREAM_MODEL: "base"
+  DEVICE: "cpu"
+  COMPUTE_TYPE: "int8"
