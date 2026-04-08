@@ -1,9 +1,12 @@
+import asyncio
 import json
+import os
+import re
 import uuid
 from datetime import datetime, timezone
 
 from arq.connections import ArqRedis
-from fastapi import APIRouter, HTTPException, Request, UploadFile
+from fastapi import APIRouter, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.responses import PlainTextResponse
 
 from app.config import MAX_FILE_SIZE, WHISPER_MODEL
@@ -12,6 +15,94 @@ from app.storage import generate_srt, load_result, save_upload
 from app.tasks import AVAILABLE_MODELS
 
 router = APIRouter(prefix="/api")
+
+# Stream state
+_stream_lock = asyncio.Lock()
+_stream_process = None
+
+WHISPER_STREAM_BIN = os.environ.get("WHISPER_STREAM_BIN", "/opt/homebrew/bin/whisper-stream")
+STREAM_MODEL_PATH = os.environ.get(
+    "STREAM_MODEL_PATH",
+    os.path.join(os.path.dirname(__file__), "..", "..", "models", "ggml-small.bin"),
+)
+
+
+@router.websocket("/stream")
+async def websocket_stream(ws: WebSocket):
+    global _stream_process
+    await ws.accept()
+
+    if _stream_lock.locked():
+        await ws.send_json({"type": "error", "message": "已有其他使用者正在使用，請稍後再試"})
+        await ws.close()
+        return
+
+    async with _stream_lock:
+        process = None
+        stdout_task = None
+        try:
+            while True:
+                data = json.loads(await ws.receive_text())
+
+                if data["action"] == "start":
+                    if process:
+                        process.terminate()
+                        await process.wait()
+
+                    lang = data.get("language", "zh")
+                    await ws.send_json({"type": "status", "message": "loading"})
+
+                    process = await asyncio.create_subprocess_exec(
+                        WHISPER_STREAM_BIN,
+                        "-m", STREAM_MODEL_PATH,
+                        "-l", lang,
+                        "--step", "3000",
+                        "--length", "10000",
+                        "--keep", "200",
+                        "--keep-context",
+                        "-t", "4",
+                        "-c", "-1",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                    )
+                    _stream_process = process
+
+                    async def read_stdout():
+                        try:
+                            async for line in process.stdout:
+                                text = line.decode("utf-8", errors="replace").strip()
+                                text = re.sub(r"\[[\d:.]+\s*-->\s*[\d:.]+\]\s*", "", text)
+                                if text and not text.startswith(("init:", "whisper_", "ggml_", "load_")):
+                                    await ws.send_json({"type": "transcript", "text": text})
+                        except Exception:
+                            pass
+
+                    stdout_task = asyncio.create_task(read_stdout())
+                    await ws.send_json({"type": "status", "message": "started"})
+
+                elif data["action"] == "stop":
+                    if process:
+                        process.terminate()
+                        await process.wait()
+                        process = None
+                        _stream_process = None
+                    if stdout_task:
+                        stdout_task.cancel()
+                        stdout_task = None
+                    await ws.send_json({"type": "status", "message": "stopped"})
+
+        except (WebSocketDisconnect, Exception):
+            pass
+        finally:
+            if process:
+                process.terminate()
+                try:
+                    await asyncio.wait_for(process.wait(), timeout=5)
+                except asyncio.TimeoutError:
+                    process.kill()
+                _stream_process = None
+            if stdout_task:
+                stdout_task.cancel()
 
 
 @router.get("/models")

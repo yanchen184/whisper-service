@@ -101,6 +101,24 @@
   .docs pre { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1rem; overflow-x: auto; margin: 1rem 0; }
   .docs pre code { background: none; padding: 0; color: #e2e8f0; }
 
+  /* Stream tab */
+  .stream-controls { display: flex; gap: 1rem; align-items: center; margin-bottom: 1rem; }
+  .stream-btn { padding: 0.75rem 2rem; border-radius: 12px; border: none; cursor: pointer; font-size: 1rem; font-weight: 700; transition: all 0.2s; }
+  .stream-btn.start { background: #22c55e; color: white; }
+  .stream-btn.start:hover { background: #16a34a; }
+  .stream-btn.stop { background: #dc2626; color: white; animation: pulse 1.2s infinite; }
+  .stream-btn.stop:hover { background: #b91c1c; }
+  .stream-status { display: flex; align-items: center; gap: 0.5rem; color: #94a3b8; font-size: 0.85rem; }
+  .stream-status .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .dot.connected { background: #22c55e; }
+  .dot.disconnected { background: #64748b; }
+  .dot.listening { background: #22c55e; animation: pulse 1.2s infinite; }
+  .dot.loading { background: #eab308; animation: pulse 0.8s infinite; }
+  .stream-output { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; min-height: 300px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; line-height: 2; font-size: 1.1rem; }
+  .stream-lang { display: flex; gap: 1rem; margin-bottom: 1rem; }
+  .stream-lang label { display: flex; align-items: center; gap: 0.4rem; color: #cbd5e1; cursor: pointer; font-size: 0.9rem; }
+  .stream-actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+
   /* Section nav */
   .doc-nav { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1.5rem; }
   .doc-nav a { padding: 0.4rem 0.8rem; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #94a3b8; text-decoration: none; font-size: 0.8rem; transition: all 0.2s; }
@@ -114,6 +132,7 @@
 
   <div class="tabs">
     <div class="tab active" onclick="switchTab('tool')">轉錄工具</div>
+    <div class="tab" onclick="switchTab('stream')">即時轉錄</div>
     <div class="tab" onclick="switchTab('docs')">方案評估報告</div>
     <div class="tab" onclick="switchTab('arch')">系統架構</div>
   </div>
@@ -168,7 +187,35 @@
     </div>
   </div>
 
-  <!-- Tab 2: 方案評估報告 -->
+  <!-- Tab 2: 即時轉錄 -->
+  <div class="tab-content" id="tab-stream">
+    <div class="stream-lang">
+      <label><input type="radio" name="streamLang" value="zh" checked> 中文</label>
+      <label><input type="radio" name="streamLang" value="en"> English</label>
+      <label><input type="radio" name="streamLang" value="auto"> 自動偵測</label>
+    </div>
+
+    <div class="stream-controls">
+      <button class="stream-btn start" id="streamBtn" onclick="toggleStream()">開始辨識</button>
+      <div class="stream-status">
+        <span class="dot disconnected" id="streamDot"></span>
+        <span id="streamStatusText">未連線</span>
+      </div>
+    </div>
+
+    <div class="stream-output" id="streamText"></div>
+
+    <div class="stream-actions">
+      <button class="btn btn-outline" onclick="copyStreamText()">複製全部文字</button>
+      <button class="btn btn-outline" onclick="clearStreamText()">清除</button>
+    </div>
+
+    <div style="margin-top:1rem;color:#64748b;font-size:0.8rem;">
+      即時轉錄使用本機麥克風 + whisper.cpp stream（small 模型）。需在本機執行，不支援 Docker 容器。
+    </div>
+  </div>
+
+  <!-- Tab 3: 方案評估報告 -->
   <div class="tab-content" id="tab-docs">
     <div class="docs">
       <div class="doc-nav">
@@ -639,10 +686,106 @@ function updateRecTimer() {
   document.getElementById('recTimer').textContent = `${m}:${s}`;
 }
 
+/* ---- Stream ---- */
+let streamWs = null;
+let isStreaming = false;
+
+function toggleStream() {
+  if (isStreaming) stopStream();
+  else startStream();
+}
+
+function startStream() {
+  const lang = document.querySelector('input[name="streamLang"]:checked').value;
+  const wsUrl = `ws://${location.host}/api/stream`;
+  streamWs = new WebSocket(wsUrl);
+
+  streamWs.onopen = () => {
+    streamWs.send(JSON.stringify({ action: 'start', language: lang }));
+    updateStreamUI('loading');
+  };
+
+  streamWs.onmessage = (e) => {
+    const data = JSON.parse(e.data);
+    if (data.type === 'status') {
+      if (data.message === 'started') {
+        isStreaming = true;
+        updateStreamUI('listening');
+      } else if (data.message === 'stopped') {
+        isStreaming = false;
+        updateStreamUI('disconnected');
+      } else if (data.message === 'loading') {
+        updateStreamUI('loading');
+      }
+    } else if (data.type === 'transcript') {
+      appendStreamText(data.text);
+    } else if (data.type === 'error') {
+      alert(data.message);
+      isStreaming = false;
+      updateStreamUI('disconnected');
+    }
+  };
+
+  streamWs.onclose = () => {
+    isStreaming = false;
+    updateStreamUI('disconnected');
+  };
+
+  streamWs.onerror = () => {
+    isStreaming = false;
+    updateStreamUI('disconnected');
+    alert('無法連線到串流伺服器\n請先執行: python stream_server.py');
+  };
+}
+
+function stopStream() {
+  if (streamWs && streamWs.readyState === WebSocket.OPEN) {
+    streamWs.send(JSON.stringify({ action: 'stop' }));
+    streamWs.close();
+  }
+  isStreaming = false;
+  updateStreamUI('disconnected');
+}
+
+function appendStreamText(text) {
+  const el = document.getElementById('streamText');
+  el.textContent += text + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+function updateStreamUI(state) {
+  const btn = document.getElementById('streamBtn');
+  const dot = document.getElementById('streamDot');
+  const st = document.getElementById('streamStatusText');
+  if (state === 'listening') {
+    btn.textContent = '停止辨識'; btn.className = 'stream-btn stop';
+    dot.className = 'dot listening'; st.textContent = '辨識中... 對著麥克風說話';
+  } else if (state === 'loading') {
+    btn.textContent = '載入中...'; btn.className = 'stream-btn stop'; btn.disabled = true;
+    dot.className = 'dot loading'; st.textContent = '模型載入中...';
+    setTimeout(() => { btn.disabled = false; }, 0);
+  } else {
+    btn.textContent = '開始辨識'; btn.className = 'stream-btn start';
+    dot.className = 'dot disconnected'; st.textContent = '未連線';
+  }
+}
+
+function clearStreamText() { document.getElementById('streamText').textContent = ''; }
+
+function copyStreamText() {
+  const text = document.getElementById('streamText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    const orig = btn.textContent;
+    btn.textContent = '已複製!';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
 /* ---- Tabs ---- */
 function switchTab(name) {
   document.querySelectorAll('.tab').forEach((t, i) => {
-    const tabs = ['tool', 'docs', 'arch'];
+    const tabs = ['tool', 'stream', 'docs', 'arch'];
     t.classList.toggle('active', tabs[i] === name);
   });
   document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
