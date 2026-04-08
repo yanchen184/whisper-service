@@ -9,7 +9,11 @@ import threading
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 
-from app.config import COMPUTE_TYPE, DEVICE, MAX_CHUNK_SIZE, MAX_CONNECTIONS, STREAM_MODEL
+from app.config import (
+    BACKEND_VAD_ENABLED, BACKEND_VAD_SILENCE_MS, BACKEND_VAD_SPEECH_PAD_MS, BACKEND_VAD_THRESHOLD,
+    COMPUTE_TYPE, DEFAULT_LANGUAGE, DEVICE, MAX_CHUNK_SIZE, MAX_CONNECTIONS, STREAM_MODEL,
+    VAD_MAX_CHUNK_MS, VAD_MIN_SPEECH_MS, VAD_SILENCE_DURATION_MS, VAD_SILENCE_THRESHOLD,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +52,18 @@ def _get_stream_model():
         logger.info("Loading model=%s device=%s compute_type=%s", STREAM_MODEL, device, compute_type)
         _stream_model = WhisperModel(STREAM_MODEL, device=device, compute_type=compute_type)
     return _stream_model
+
+
+@router.get("/config")
+async def get_config():
+    return {
+        "vad_silence_threshold": VAD_SILENCE_THRESHOLD,
+        "vad_silence_duration_ms": VAD_SILENCE_DURATION_MS,
+        "vad_min_speech_ms": VAD_MIN_SPEECH_MS,
+        "vad_max_chunk_ms": VAD_MAX_CHUNK_MS,
+        "default_language": DEFAULT_LANGUAGE,
+        "max_connections": MAX_CONNECTIONS,
+    }
 
 
 @router.get("/health")
@@ -154,15 +170,16 @@ def _transcribe_chunk(model, audio_bytes: bytes, language) -> str:
         return ""
 
     wav_io = io.BytesIO(result.stdout)
-    segments, _ = model.transcribe(
-        wav_io,
-        language=language,
-        vad_filter=True,
-        vad_parameters={
-            "threshold": 0.3,
-            "min_silence_duration_ms": 300,
-            "speech_pad_ms": 200,
-        },
-        condition_on_previous_text=True,
-    )
+    transcribe_kwargs = {
+        "language": language,
+        "vad_filter": BACKEND_VAD_ENABLED,
+        "condition_on_previous_text": True,
+    }
+    if BACKEND_VAD_ENABLED:
+        transcribe_kwargs["vad_parameters"] = {
+            "threshold": BACKEND_VAD_THRESHOLD,
+            "min_silence_duration_ms": BACKEND_VAD_SILENCE_MS,
+            "speech_pad_ms": BACKEND_VAD_SPEECH_PAD_MS,
+        }
+    segments, _ = model.transcribe(wav_io, **transcribe_kwargs)
     return "".join(seg.text for seg in segments)

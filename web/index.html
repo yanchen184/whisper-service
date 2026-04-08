@@ -64,7 +64,7 @@
     <button class="btn" onclick="clearText()">清除</button>
   </div>
 
-  <p class="hint">瀏覽器麥克風 → WebSocket → faster-whisper。每 5 秒送出一段音訊即時辨識。</p>
+  <p class="hint">瀏覽器 VAD 偵測停頓自動切段 → WebSocket → faster-whisper 即時辨識。</p>
 </div>
 
 <script>
@@ -72,6 +72,26 @@ let ws = null;
 let streaming = false;
 let recorder = null;
 let micStream = null;
+let audioCtx = null;
+let analyser = null;
+let vadTimer = null;
+let isSpeaking = false;
+let silenceStart = 0;
+
+// VAD 參數（啟動時從 /api/config 載入，可透過 K8s ConfigMap 調整）
+let SILENCE_THRESHOLD = 0.015;
+let SILENCE_DURATION = 800;
+let MIN_SPEECH_DURATION = 500;
+let MAX_CHUNK_DURATION = 10000;
+let speechStart = 0;
+
+// 啟動時載入 VAD 設定
+fetch('/api/config').then(r => r.json()).then(cfg => {
+  SILENCE_THRESHOLD = cfg.vad_silence_threshold ?? SILENCE_THRESHOLD;
+  SILENCE_DURATION = cfg.vad_silence_duration_ms ?? SILENCE_DURATION;
+  MIN_SPEECH_DURATION = cfg.vad_min_speech_ms ?? MIN_SPEECH_DURATION;
+  MAX_CHUNK_DURATION = cfg.vad_max_chunk_ms ?? MAX_CHUNK_DURATION;
+}).catch(() => {});
 
 function toggle() {
   if (streaming) stop();
@@ -130,17 +150,71 @@ async function start() {
 
 function startCapture() {
   if (!micStream) return;
+
+  // Web Audio API — 分析音量做 VAD
+  audioCtx = new AudioContext();
+  const source = audioCtx.createMediaStreamSource(micStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 512;
+  source.connect(analyser);
+
+  // MediaRecorder — 錄音
   recorder = new MediaRecorder(micStream, { mimeType: getSupportedMime() });
   recorder.ondataavailable = (e) => {
     if (e.data.size > 0 && ws && ws.readyState === WebSocket.OPEN) ws.send(e.data);
   };
-  recorder.start(5000);
+
+  isSpeaking = false;
+  silenceStart = 0;
+  speechStart = 0;
+
+  // 每 50ms 檢查一次音量
+  vadTimer = setInterval(() => {
+    const data = new Float32Array(analyser.fftSize);
+    analyser.getFloatTimeDomainData(data);
+    const rms = Math.sqrt(data.reduce((sum, v) => sum + v * v, 0) / data.length);
+    const now = Date.now();
+
+    if (rms > SILENCE_THRESHOLD) {
+      // 有聲音
+      silenceStart = 0;
+      if (!isSpeaking) {
+        // 開始說話 → 開始錄音
+        isSpeaking = true;
+        speechStart = now;
+        recorder.start();
+      }
+    } else if (isSpeaking) {
+      // 靜音中
+      if (silenceStart === 0) silenceStart = now;
+      const silenceDuration = now - silenceStart;
+      const speechDuration = now - speechStart;
+
+      // 靜音超過門檻 且 語音夠長 → 切段送出
+      if (silenceDuration >= SILENCE_DURATION && speechDuration >= MIN_SPEECH_DURATION) {
+        recorder.stop();
+        isSpeaking = false;
+        silenceStart = 0;
+      }
+    }
+
+    // 超過最大長度強制切段
+    if (isSpeaking && (Date.now() - speechStart) >= MAX_CHUNK_DURATION) {
+      recorder.stop();
+      isSpeaking = false;
+      silenceStart = 0;
+    }
+  }, 50);
 }
 
 function stopCapture() {
+  if (vadTimer) { clearInterval(vadTimer); vadTimer = null; }
   if (recorder && recorder.state === 'recording') recorder.stop();
+  if (audioCtx) { audioCtx.close(); audioCtx = null; }
   if (micStream) { micStream.getTracks().forEach(t => t.stop()); micStream = null; }
   recorder = null;
+  analyser = null;
+  isSpeaking = false;
 }
 
 function stop() {
