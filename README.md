@@ -173,6 +173,25 @@ whisper-service/
 
 ---
 
+## 切換模型（K8s）
+
+```bash
+# 1. 修改 ConfigMap 裡的模型名稱
+kubectl edit configmap whisper-config -n whisper
+# 把 STREAM_MODEL 改成你要的模型，例如：
+#   base / small / large-v2 / phate334/Breeze-ASR-25-ct2
+
+# 2. 重啟 Pod（模型會重新載入）
+kubectl rollout restart deployment/api -n whisper
+
+# 3. 等待新 Pod Ready（首次使用新模型會自動下載）
+kubectl get pods -n whisper -w
+```
+
+不需要重建 image，不需要改程式碼。
+
+---
+
 ## 停止服務
 
 ```bash
