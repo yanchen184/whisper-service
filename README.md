@@ -17,18 +17,45 @@
 
 ### 生產環境（main 分支，Breeze ASR 25，10 人同時使用）
 
-| 項目 | 規格 | 數量 | 用途 |
+| 項目 | 規格 | 數量 | 說明 |
 |------|------|------|------|
-| GPU Node | 8 vCPU, 32GB RAM, NVIDIA L4 24GB | 2 台 | API Pod x2（即時轉錄） |
-| 磁碟 | NFS 或 local-path | — | model-cache 10Gi |
+| GPU Node | 8 vCPU, 32GB RAM, NVIDIA L4 24GB | 2 台 | 每台跑 1 個 API Pod，各自載入模型獨立運算 |
+| 磁碟 | NFS 共享儲存 | 1 份 | model-cache 10Gi，模型下載一次兩台共用 |
+| 網路 | Node 之間內網互通 | — | K8s cluster networking |
 
-### 模型 VRAM 需求
+**為什麼需要 2 台 GPU Node？**
+- Breeze ASR 25 模型載入後佔用約 5GB VRAM
+- 單張 L4（24GB VRAM）一次只能處理一段音訊，處理時間約 0.5-2 秒
+- 10 人同時講話 → 2 個 Pod 分攤負載，確保回應延遲 < 3 秒
+- 如果只有 5 人以下，1 台 GPU Node 就夠
 
-| 模型 | VRAM (FP16) | 適合場景 |
-|------|-------------|---------|
-| large-v2 | 5 GB | 英文技術術語 |
-| large-v3 | 5 GB | 多語言通用（OpenAI 最新） |
-| Breeze ASR 25 | 5 GB | 台灣華語、中英混用（預設） |
+**雲端租用參考（每台 GPU Node）**：
+
+| 雲端 | 機型 | vCPU | RAM | GPU | 參考月費（USD） |
+|------|------|------|-----|-----|----------------|
+| GCP | g2-standard-8 | 8 | 32GB | L4 x1 | ~$600 |
+| AWS | g6.2xlarge | 8 | 32GB | L4 x1 | ~$580 |
+| Azure | NC4as T4 v3 | 4 | 28GB | T4 x1 | ~$400 |
+
+> T4（16GB VRAM）也能跑 Breeze ASR 25（5GB），價格更便宜但推論速度比 L4 慢約 40%
+
+**地端自建參考（每台 GPU Node）**：
+
+| 項目 | 最低規格 |
+|------|---------|
+| CPU | 8 核以上（Intel Xeon / AMD EPYC） |
+| RAM | 32 GB |
+| GPU | NVIDIA L4 24GB 或 T4 16GB 或 RTX 4090 24GB |
+| 磁碟 | SSD 100GB（系統 + Docker image + 模型快取） |
+| OS | Ubuntu 22.04 + NVIDIA Driver 535+ + CUDA 12.x |
+| K8s | NVIDIA GPU Operator 已安裝 |
+
+### 使用模型
+
+**Breeze ASR 25**（MediaTek Research，基於 Whisper large-v2）
+- VRAM：5 GB（FP16）
+- 磁碟：~3 GB
+- 強項：台灣華語、中英混用，WER 比原版 large-v2 改善 56%
 
 ---
 
