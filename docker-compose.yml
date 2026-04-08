@@ -8,7 +8,7 @@ services:
     volumes:
       - model-cache:/home/appuser/.cache
     environment:
-      - STREAM_MODEL=${STREAM_MODEL:-phate334/Breeze-ASR-25-ct2}
+      - STREAM_MODEL=${STREAM_MODEL:-base}
       - DEVICE=${DEVICE:-auto}
       - COMPUTE_TYPE=${COMPUTE_TYPE:-int8}
       - MAX_CONNECTIONS=${MAX_CONNECTIONS:-20}
@@ -27,7 +27,7 @@ services:
       context: ./web
       dockerfile: Dockerfile
     ports:
-      - "8080:80"
+      - "8081:80"
     depends_on:
       - api
 
