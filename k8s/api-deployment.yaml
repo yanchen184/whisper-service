@@ -26,7 +26,7 @@ metadata:
   name: api
   namespace: whisper
 spec:
-  replicas: 1
+  replicas: 2  # 10人同時用需要 2+ replicas，每個綁一張 GPU
   selector:
     matchLabels:
       app: api
@@ -51,24 +51,24 @@ spec:
               mountPath: /data
           resources:
             requests:
-              cpu: "2"
-              memory: 4Gi
-              nvidia.com/gpu: "1"
-            limits:
               cpu: "4"
               memory: 8Gi
+              nvidia.com/gpu: "1"
+            limits:
+              cpu: "8"
+              memory: 16Gi
               nvidia.com/gpu: "1"
           readinessProbe:
             httpGet:
               path: /api/models
               port: 8000
-            initialDelaySeconds: 120
+            initialDelaySeconds: 180
             periodSeconds: 10
           livenessProbe:
             httpGet:
               path: /api/models
               port: 8000
-            initialDelaySeconds: 120
+            initialDelaySeconds: 180
             periodSeconds: 30
       volumes:
         - name: model-cache

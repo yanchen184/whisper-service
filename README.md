@@ -73,19 +73,21 @@
 
 ### 生產環境（K8s）
 
-#### 最低配置（3-5 人同時使用）
+#### 最低配置（3-5 人同時使用，base 模型）
 
 | Node | 規格 | 數量 | 用途 |
 |------|------|------|------|
 | GPU Node | 8 vCPU, 32GB RAM, **NVIDIA T4 16GB** | 1 | API + 即時轉錄 + 批次轉錄 |
 | CPU Node | 4 vCPU, 16GB RAM | 1 | Redis, Ingress |
 
-#### 建議配置（10-20 人同時使用）
+#### 建議配置（10 人同時使用，Breeze ASR 25）
 
 | Node | 規格 | 數量 | 用途 |
 |------|------|------|------|
-| GPU Node | 8 vCPU, 32GB RAM, **NVIDIA L4 24GB** | 2 | API + Worker |
-| CPU Node | 4 vCPU, 16GB RAM | 2 | Redis, Ingress |
+| GPU Node | 8 vCPU, 32GB RAM, **NVIDIA L4 24GB** | **2-3** | API x2 + Worker x1 |
+| CPU Node | 4 vCPU, 16GB RAM | 1 | Redis, Ingress |
+
+> Breeze ASR 25 (1.54B) 單模型佔 ~5GB VRAM。每張 L4 (24GB) 可跑一個 Pod，同時服務 3-5 人即時轉錄。10 人需要 2-3 張 GPU。
 
 #### 各模型 GPU VRAM 需求
 
@@ -262,11 +264,13 @@ curl http://localhost:8000/api/models
 
 ### Pod 資源配置
 
-| Pod | CPU | RAM | GPU | 用途 |
-|-----|-----|-----|-----|------|
-| api | 2-4 核 | 4-8 GB | 1x T4/L4 | 即時轉錄 + REST API + 前端 |
-| worker | 2-4 核 | 4-8 GB | 1x T4/L4 | 批次轉錄 |
-| redis | 0.1-0.5 核 | 128-512 MB | 無 | 任務佇列 |
+| Pod | replicas | CPU | RAM | GPU | 用途 |
+|-----|----------|-----|-----|-----|------|
+| api | 2 | 4-8 核 | 8-16 GB | 1x L4 /pod | 即時轉錄 + REST API + 前端 |
+| worker | 1 | 4-8 核 | 8-16 GB | 1x L4 /pod | 批次轉錄 |
+| redis | 1 | 0.1-0.5 核 | 128-512 MB | 無 | 任務佇列 |
+
+> 使用 Breeze ASR 25 時，每個 API/Worker Pod 需要一張獨立 GPU。10 人同時使用建議 API replicas: 2-3。
 
 ### Ingress 注意事項
 
