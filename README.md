@@ -279,6 +279,56 @@ whisper-service/
 
 ---
 
+## K8s YAML 說明
+
+| 檔案 | 用途 | 維運需修改 |
+|------|------|-----------|
+| `namespace.yaml` | 建立 `whisper` namespace，隔離資源 | 不需要 |
+| `configmap.yaml` | 所有環境變數（模型、VAD 參數等），改這裡不用重建 image | **切換模型、調整參數時改這裡** |
+| `pv.yaml` | PersistentVolume，模型快取存放位置 | **生產環境改 NFS Server IP 和路徑** |
+| `pvc.yaml` | PersistentVolumeClaim，綁定 PV | 不需要 |
+| `deployment.yaml` | API Pod（faster-whisper 轉錄服務） | **改 image 名稱（用 registry 時）、調整 replicas 和資源** |
+| `service.yaml` | API Service，帶 sessionAffinity 確保 WebSocket 黏性 | 不需要 |
+| `web-deployment.yaml` | 前端 Nginx Pod | **改 image 名稱（用 registry 時）** |
+| `web-service.yaml` | 前端 Service | 不需要 |
+| `ingress.yaml` | 外部入口，`/api` → API、`/` → 前端 | **改 domain、TLS 設定** |
+| `kustomization.yaml` | Kustomize 入口，`kubectl apply -k k8s/` 一次部署全部 | 不需要 |
+
+### 常見維運操作
+
+```bash
+# 查看 Pod 狀態
+kubectl get pods -n whisper
+
+# 查看 API 日誌
+kubectl logs -n whisper deployment/api -f
+
+# 查看前端日誌
+kubectl logs -n whisper deployment/web -f
+
+# 擴縮容（例如 API 改為 3 個 Pod）
+kubectl scale deployment/api -n whisper --replicas=3
+
+# 重啟（不停機，rolling update）
+kubectl rollout restart deployment/api -n whisper
+kubectl rollout restart deployment/web -n whisper
+
+# 確認 ConfigMap 內容
+kubectl get configmap whisper-config -n whisper -o yaml
+```
+
+### 故障排除
+
+| 狀況 | 檢查方式 | 可能原因 |
+|------|---------|---------|
+| Pod `CrashLoopBackOff` | `kubectl logs -n whisper <pod-name>` | 模型下載失敗、記憶體不足（OOM） |
+| Pod `Pending` | `kubectl describe pod -n whisper <pod-name>` | PV/PVC 未綁定、Node 資源不足、GPU label 未設定 |
+| 前端打不開 | `kubectl get svc,ingress -n whisper` | Ingress 設定錯誤、web Pod 未 Running |
+| 轉錄沒反應 | `curl <host>/api/health` | API 回 503 表示模型還在載入，等幾分鐘 |
+| WebSocket 斷線 | 檢查 Ingress timeout 設定 | nginx Ingress 預設 60s timeout，需調大 |
+
+---
+
 ## 切換模型（K8s）
 
 ```bash
