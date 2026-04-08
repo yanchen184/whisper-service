@@ -12,7 +12,6 @@ COPY api/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY api/app/ app/
-COPY web/ /web/
 
 RUN mkdir -p /home/appuser/.cache && chown -R appuser:appuser /home/appuser/.cache
 

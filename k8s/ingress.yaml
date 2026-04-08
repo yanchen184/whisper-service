@@ -14,10 +14,17 @@ spec:
     - host: whisper.example.com  # 改成你的 domain
       http:
         paths:
-          - path: /
+          - path: /api
             pathType: Prefix
             backend:
               service:
                 name: api
+                port:
+                  number: 8000
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: web
                 port:
                   number: 80

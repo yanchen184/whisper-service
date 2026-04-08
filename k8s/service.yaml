@@ -11,5 +11,5 @@ spec:
     clientIP:
       timeoutSeconds: 3600
   ports:
-    - port: 80
+    - port: 8000
       targetPort: 8000

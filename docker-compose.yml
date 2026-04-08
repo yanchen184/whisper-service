@@ -6,13 +6,12 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./web:/web
       - model-cache:/home/appuser/.cache
     environment:
       - STREAM_MODEL=${STREAM_MODEL:-phate334/Breeze-ASR-25-ct2}
       - DEVICE=${DEVICE:-auto}
       - COMPUTE_TYPE=${COMPUTE_TYPE:-int8}
-      - MAX_CONNECTIONS=${MAX_CONNECTIONS:-5}
+      - MAX_CONNECTIONS=${MAX_CONNECTIONS:-20}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     # GPU support: uncomment below
     # deploy:
@@ -22,6 +21,15 @@ services:
     #         - driver: nvidia
     #           count: 1
     #           capabilities: [gpu]
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    ports:
+      - "8081:80"
+    depends_on:
+      - api
 
 volumes:
   model-cache:
