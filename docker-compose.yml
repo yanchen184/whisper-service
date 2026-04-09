@@ -3,16 +3,35 @@ services:
     build:
       context: .
       dockerfile: api/Dockerfile
+      args:
+        WHISPER_MODEL: ${STREAM_MODEL:-base}
     ports:
       - "8000:8000"
-    volumes:
-      - model-cache:/home/appuser/.cache
     environment:
       - STREAM_MODEL=${STREAM_MODEL:-base}
       - DEVICE=${DEVICE:-auto}
       - COMPUTE_TYPE=${COMPUTE_TYPE:-int8}
       - MAX_CONNECTIONS=${MAX_CONNECTIONS:-20}
+      - LLM_BASE_URL=http://llm:8001/v1
+      - LLM_MODEL=${LLM_MODEL:-MediaTek-Research/Breeze-2-8B-Instruct}
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    # GPU support: uncomment below
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+
+  llm:
+    build:
+      context: ./llm
+      dockerfile: Dockerfile
+      args:
+        LLM_MODEL: ${LLM_MODEL:-MediaTek-Research/Breeze-2-8B-Instruct}
+    ports:
+      - "8001:8001"
     # GPU support: uncomment below
     # deploy:
     #   resources:
@@ -30,6 +49,3 @@ services:
       - "8081:80"
     depends_on:
       - api
-
-volumes:
-  model-cache:

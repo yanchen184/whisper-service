@@ -8,6 +8,7 @@ import threading
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
+from pydantic import BaseModel
 
 from app.config import (
     BACKEND_VAD_ENABLED, BACKEND_VAD_SILENCE_MS, BACKEND_VAD_SPEECH_PAD_MS, BACKEND_VAD_THRESHOLD,
@@ -29,6 +30,24 @@ def _get_semaphore() -> asyncio.Semaphore:
     if _connection_semaphore is None:
         _connection_semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
     return _connection_semaphore
+
+
+class ReportRequest(BaseModel):
+    transcript: str
+
+
+@router.post("/report")
+async def report(req: ReportRequest):
+    """接收轉錄文字，呼叫 LLM 產生結構化報告"""
+    if not req.transcript.strip():
+        return JSONResponse({"error": "transcript 不可為空"}, status_code=400)
+    from app.llm_client import generate_report
+    try:
+        result = await generate_report(req.transcript)
+        return result
+    except Exception as e:
+        logger.exception("LLM report error")
+        return JSONResponse({"error": f"LLM 服務錯誤: {e}"}, status_code=502)
 
 
 def _get_stream_model():

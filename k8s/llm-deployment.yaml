@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: api
+  name: llm
   namespace: whisper
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: api
+      app: llm
   template:
     metadata:
       labels:
-        app: api
+        app: llm
     spec:
       containers:
-        - name: api
-          image: whisper-api:latest
+        - name: llm
+          image: whisper-llm:latest
           imagePullPolicy: Never
           ports:
-            - containerPort: 8000
+            - containerPort: 8001
           envFrom:
             - configMapRef:
                 name: whisper-config
@@ -31,13 +31,13 @@ spec:
               memory: 2Gi
           readinessProbe:
             httpGet:
-              path: /api/health
-              port: 8000
-            initialDelaySeconds: 180
+              path: /health
+              port: 8001
+            initialDelaySeconds: 120
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /api/health
-              port: 8000
-            initialDelaySeconds: 180
+              path: /health
+              port: 8001
+            initialDelaySeconds: 120
             periodSeconds: 30

@@ -29,11 +29,33 @@
   .dot.listening { background: #22c55e; animation: pulse 1.2s infinite; }
   .dot.loading { background: #eab308; animation: pulse 0.8s infinite; }
 
-  .output { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; min-height: 300px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; line-height: 2; font-size: 1.1rem; }
+  .output { background: #0f172a; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; min-height: 300px; max-height: 500px; overflow-y: auto; white-space: pre-wrap; line-height: 2; font-size: 1.1rem; outline: none; }
+  .output:focus { border-color: #3b82f6; }
+  .output[contenteditable]::before { content: attr(data-placeholder); color: #475569; }
+  .output:not(:empty)::before { display: none; }
 
-  .actions { display: flex; gap: 0.5rem; margin-top: 1rem; }
+  .actions { display: flex; gap: 0.5rem; margin-top: 1rem; align-items: center; }
   .btn { padding: 0.5rem 1rem; border-radius: 8px; border: none; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: all 0.2s; background: transparent; border: 1px solid #475569; color: #e2e8f0; }
   .btn:hover { background: #1e293b; }
+  .btn.primary { background: #3b82f6; color: white; border: none; }
+  .btn.primary:hover { background: #2563eb; }
+  .btn.primary:disabled { background: #1e3a5f; color: #64748b; cursor: not-allowed; }
+
+  .report-section { margin-top: 1.5rem; display: none; }
+  .report-section.visible { display: block; }
+  .report-header { display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+  .report-tag { padding: 0.25rem 0.75rem; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; }
+  .report-tag.meeting { background: #1e3a5f; color: #60a5fa; }
+  .report-tag.medical { background: #3b1f1f; color: #f87171; }
+  .report-tag.interview { background: #1f3b2e; color: #4ade80; }
+  .report-tag.memo { background: #3b3520; color: #facc15; }
+  .report-tag.other { background: #2d2d3d; color: #a78bfa; }
+  .report-content { background: #1e293b; border: 1px solid #334155; border-radius: 8px; padding: 1.5rem; line-height: 1.8; font-size: 1rem; }
+  .report-content h3 { color: #93c5fd; margin: 1rem 0 0.5rem; font-size: 0.95rem; }
+  .report-content h3:first-child { margin-top: 0; }
+  .report-content p { margin-bottom: 0.5rem; }
+  .report-content ul { margin: 0.25rem 0 0.5rem 1.5rem; }
+  .report-content li { margin-bottom: 0.25rem; }
 
   .hint { margin-top: 1rem; color: #64748b; font-size: 0.8rem; }
 </style>
@@ -57,14 +79,24 @@
     </div>
   </div>
 
-  <div class="output" id="output"></div>
+  <div class="output" id="output" contenteditable="true" data-placeholder="轉錄文字會出現在這裡，你也可以手動編輯..."></div>
 
   <div class="actions">
     <button class="btn" onclick="copyText(this)">複製全部文字</button>
     <button class="btn" onclick="clearText()">清除</button>
+    <button class="btn primary" id="reportBtn" onclick="generateReport()" disabled>產生報告</button>
   </div>
 
-  <p class="hint">瀏覽器 VAD 偵測停頓自動切段 → WebSocket → faster-whisper 即時辨識。</p>
+  <div class="report-section" id="reportSection">
+    <div class="report-header">
+      <span>報告結果</span>
+      <span class="report-tag" id="reportTag"></span>
+      <button class="btn" style="margin-left:auto;" onclick="copyReport(this)">複製報告</button>
+    </div>
+    <div class="report-content" id="reportContent"></div>
+  </div>
+
+  <p class="hint">瀏覽器 VAD 偵測停頓自動切段 → WebSocket → faster-whisper 即時辨識。編輯文字後按「產生報告」送 LLM 潤飾分類。</p>
 </div>
 
 <script>
@@ -249,12 +281,110 @@ function appendText(text) {
   el.scrollTop = el.scrollHeight;
 }
 
-function clearText() { document.getElementById('output').textContent = ''; }
+function clearText() {
+  document.getElementById('output').textContent = '';
+  document.getElementById('reportSection').classList.remove('visible');
+  document.getElementById('reportBtn').disabled = true;
+}
 
 function copyText(btn) {
   navigator.clipboard.writeText(document.getElementById('output').textContent).then(() => {
     btn.textContent = '已複製!';
     setTimeout(() => btn.textContent = '複製全部文字', 1500);
+  });
+}
+
+// 監聽 output 內容變化，啟用/停用「產生報告」按鈕
+const outputEl = document.getElementById('output');
+const observer = new MutationObserver(() => {
+  document.getElementById('reportBtn').disabled = !outputEl.textContent.trim();
+});
+observer.observe(outputEl, { childList: true, characterData: true, subtree: true });
+
+async function generateReport() {
+  const text = document.getElementById('output').textContent.trim();
+  if (!text) return;
+
+  const btn = document.getElementById('reportBtn');
+  btn.disabled = true;
+  btn.textContent = '產生中...';
+
+  try {
+    const resp = await fetch('/api/report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript: text }),
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json();
+      alert(err.error || '產生報告失敗');
+      return;
+    }
+
+    const data = await resp.json();
+    renderReport(data);
+  } catch (e) {
+    alert('無法連線到 LLM 服務: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '產生報告';
+  }
+}
+
+function renderReport(data) {
+  const section = document.getElementById('reportSection');
+  const tag = document.getElementById('reportTag');
+  const content = document.getElementById('reportContent');
+
+  const tagLabels = { meeting: '會議記錄', medical: '醫療紀錄', interview: '訪談紀錄', memo: '備忘錄', other: '其他' };
+  tag.textContent = tagLabels[data.tag] || data.tag;
+  tag.className = 'report-tag ' + (data.tag || 'other');
+
+  let html = '<h3>潤飾文字</h3><p>' + escapeHtml(data.polished || '') + '</p>';
+
+  if (data.structured) {
+    const s = data.structured;
+    const entries = Object.entries(s);
+    for (const [key, val] of entries) {
+      const label = fieldLabel(key);
+      if (val === null || val === undefined || val === '') continue;
+      if (Array.isArray(val)) {
+        if (val.length === 0) continue;
+        html += '<h3>' + label + '</h3><ul>' + val.map(v => '<li>' + escapeHtml(v) + '</li>').join('') + '</ul>';
+      } else {
+        html += '<h3>' + label + '</h3><p>' + escapeHtml(String(val)) + '</p>';
+      }
+    }
+  }
+
+  content.innerHTML = html;
+  section.classList.add('visible');
+  section.scrollIntoView({ behavior: 'smooth' });
+}
+
+function fieldLabel(key) {
+  const labels = {
+    title: '標題', date: '日期', participants: '與會人員', summary: '摘要',
+    action_items: '待辦事項', decisions: '決議事項', patient: '患者資訊',
+    chief_complaint: '主訴', history: '病史', assessment: '評估', plan: '處置計畫',
+    interviewee: '受訪者', topic: '主題', key_points: '重點摘錄', quotes: '重要引述',
+    subject: '主旨', body: '內容', action_required: '需處理事項', content: '內容',
+  };
+  return labels[key] || key;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+function copyReport(btn) {
+  const text = document.getElementById('reportContent').innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = '已複製!';
+    setTimeout(() => btn.textContent = '複製報告', 1500);
   });
 }
 </script>
