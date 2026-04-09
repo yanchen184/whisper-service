@@ -19,4 +19,8 @@ USER appuser
 
 ENV HF_HOME=/home/appuser/.cache/huggingface
 
+# Build 時預載模型，部署不需要網路
+ARG WHISPER_MODEL=base
+RUN python -c "from faster_whisper import WhisperModel; WhisperModel('${WHISPER_MODEL}', device='cpu', compute_type='int8')"
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

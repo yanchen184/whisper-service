@@ -24,3 +24,9 @@ data:
   BACKEND_VAD_THRESHOLD: "0.3"
   BACKEND_VAD_SILENCE_MS: "300"
   BACKEND_VAD_SPEECH_PAD_MS: "200"
+
+  # LLM 服務
+  LLM_BASE_URL: "http://llm:8001/v1"
+  LLM_MODEL: "MediaTek-Research/Breeze-2-8B-Instruct"
+  LLM_MAX_TOKENS: "2048"
+  LLM_TEMPERATURE: "0.3"

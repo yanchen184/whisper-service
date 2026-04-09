@@ -6,10 +6,10 @@ namespace: whisper
 resources:
   - namespace.yaml
   - configmap.yaml
-  - pv.yaml
-  - pvc.yaml
   - deployment.yaml
   - service.yaml
   - web-deployment.yaml
   - web-service.yaml
+  - llm-deployment.yaml
+  - llm-service.yaml
   - ingress.yaml
