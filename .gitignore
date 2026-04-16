@@ -7,6 +7,13 @@ whisper-env/
 # Models (too large for git)
 models/*.bin
 
+# 原始評鑑資料（含個資，不 commit）
+*.xlsx
+*.docx
+
+# ChromaDB 向量索引（由 JSON 自動重建，不 commit）
+api/data/chroma/
+
 # Output
 output/
 

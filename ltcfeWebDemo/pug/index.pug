@@ -1,0 +1,198 @@
+doctype html
+html(lang="zh-TW")
+  head
+    meta(charset="UTF-8")
+    meta(name="viewport" content="width=device-width, initial-scale=1.0")
+    title 長期照護評鑑系統
+    // Bootstrap CSS
+    link(rel="stylesheet" href="assets/javascripts/vendor/bootstrap/css/bootstrap.min.css")
+    // Font Awesome
+    link(rel="stylesheet" href="assets/javascripts/vendor/fontawesome-pro/css/all.min.css")
+    link(rel="stylesheet" href="assets/javascripts/vendor/notyf/notyf.min.css")
+    link(rel="stylesheet" href="assets/stylesheets/committee-style.css")
+    link(rel="stylesheet" href="assets/stylesheets/style.css")
+
+  body
+    //導覽列 / 網路指示器 / 登入視窗
+    include _nav
+
+    .global-wrapper
+      .container
+        .content-card
+          h1.page-title 實地評鑑
+          .deco-bar
+
+          .progress-section
+            .progress-bar
+              .progress-fill(style="width: 0")
+            .progress-text 項目 1 / 3
+
+
+
+          .cate-title
+            //.cate 住
+            //.title 業務計畫及營運（或政策）方針之擬訂與執行情形
+            .title 經營管理效能
+
+
+          // 手風琴組件
+          .accordion-container
+            //
+            //
+            //
+            //
+            //
+            // 第一題
+            include _Q1
+
+            //
+            //
+            //
+            //
+            //
+            // 第二題
+            include _Q2
+
+            //
+            //
+            //
+            //
+            //
+            // 第三題
+            include _Q3
+
+          //-.navigation-buttons
+            button.nav-btn(onclick="previousItem()") 上一題
+            button.nav-btn(onclick="nextItem()") 下一題
+
+
+      // 快速前往選單
+      .quick-nav-bar
+        .nav-item(title="快速導航" onclick="toggleQuickMenu()")
+          .icon
+            i.fas.fa-arrow-left-to-dotted-line.fa-flip-horizontal
+          .text 快速導航
+        .nav-item(title="機構資訊" onclick="toggleFacilityModal()")
+          .icon
+            i.fas.fa-circle-info
+          .text 機構資訊
+        //-.nav-item(title="系統設定")
+          .icon
+            i.fas.fa-cog
+          .text 系統設定
+        hr
+        .nav-item(title="暫存")
+          .icon
+            i.fas.fa-save
+          .text 暫存
+        .nav-item(title="送出")
+          .icon
+            i.fas.fa-paper-plane
+          .text 送出
+
+
+    //- 快速選單
+    #quickMenu.quick-menu
+      .quick-menu-header
+        .quick-menu-title 快速導航
+
+      // 項目 A1
+      .menu-item
+        .menu-item-header(onclick="toggleMenuItem(0)")
+          div
+            //span.menu-item-code A1
+            span.menu-item-title  經營管理效能
+          span.menu-item-arrow ▶
+        .menu-item-groups
+          .group-item(onclick="jumpToItemAndGroup(0, 0)")
+            .code A1
+            .text 業務計畫及營運（或政策）方針之擬訂與執行情形
+          .group-item(onclick="jumpToItemAndGroup(0, 1)")
+            .code A2
+            .text 入出機構之管理
+          .group-item(onclick="jumpToItemAndGroup(0, 2)")
+            .code A3
+            .text 工作人員權益相關制度訂定及執行情形
+
+      // 項目 A3
+      //-.menu-item
+        .menu-item-header(onclick="toggleMenuItem(1)")
+          div
+            span.menu-item-code A3
+            span.menu-item-title  工作手冊制定與執行情形
+          span.menu-item-arrow ▶
+        .menu-item-groups
+          .group-item(onclick="jumpToItemAndGroup(1, 0)") 第一題
+          .group-item(onclick="jumpToItemAndGroup(1, 1)") 第二題
+          .group-item(onclick="jumpToItemAndGroup(1, 2)") 第三題
+
+      // 項目 A4
+      //-.menu-item
+        .menu-item-header(onclick="toggleMenuItem(2)")
+          div
+            span.menu-item-code A4
+            span.menu-item-title  行政會議辦理情形
+          span.menu-item-arrow ▶
+        .menu-item-groups
+          .group-item(onclick="jumpToItemAndGroup(2, 0)") 第一題
+          .group-item(onclick="jumpToItemAndGroup(2, 1)") 第二題
+          .group-item(onclick="jumpToItemAndGroup(2, 2)") 第三題
+
+    // 機構基本資料 Modal
+    #facilityModal.facility-modal
+      .facility-modal-content
+        .facility-modal-header
+          .facility-modal-title
+            i.fas.fa-hospital
+            | 簡易機構基本資料
+          button.facility-modal-close(onclick="toggleFacilityModal()" title="機構基本資料") ×
+        .facility-modal-body
+          .facility-info-item
+            .facility-info-label
+              i.fas.fa-building
+              | 機構種類
+            .facility-info-value
+              span.facility-info-badge 機構住宿式
+          .facility-info-item
+            .facility-info-label
+              i.fas.fa-tag
+              | 機構屬性
+            .facility-info-value
+              | 長照社團法人
+          .facility-info-item
+            .facility-info-label
+              i.fas.fa-home
+              | 機構名稱
+            .facility-info-value
+              | XX長照住宿式機構
+          .facility-info-item
+            .facility-info-label
+              i.fas.fa-user-tie
+              | 機構負責人
+            .facility-info-value
+              | 王大明
+          .facility-info-item
+            .facility-info-label
+              i.fas.fa-user-check
+              | 業務負責人
+            .facility-info-value
+              | 李小華
+          .facility-info-item
+            .facility-info-label
+              i.fas.fa-bed
+              | 設立許可床數
+            .facility-info-value
+              span.facility-info-badge 80 床
+
+
+
+
+
+    include _footer
+
+    script(src="assets/javascripts/committee-script.js")
+    script(src="assets/javascripts/vendor/notyf/notyf.min.js")
+    script(src="assets/javascripts/common.js")
+
+    // Bootstrap JS
+    script(src="assets/javascripts/vendor/bootstrap/js/bootstrap.bundle.min.js")

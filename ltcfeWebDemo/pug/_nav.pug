@@ -1,0 +1,99 @@
+// 網路狀態提示 Bar
+// 顯示網路連線狀態
+#networkStatusBar.network-status-bar.online
+  span#networkStatusText.network-status-text 目前無網路服務(請勿關閉此瀏覽器APP)
+  //-span.fa-stack.fa-lg
+    i.far.fa-globe.fa-stack-1x
+    i.far.fa-ban.fa-stack-2x(style="color:transparent")
+
+
+// Bootstrap Navbar
+nav#nav.navbar.navbar-expand-lg
+  .container-fluid
+    a.navbar-brand(href="#")
+      img(src="assets/images/logo.svg")
+    div#netStatusIndicator.online
+      i.far.fa-globe.fa-2x
+    div.userStatus.ms-2.me-auto 訪客
+    button.navbar-toggler(type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation")
+      span.navbar-toggler-icon
+    #navbarNav.collapse.navbar-collapse.justify-content-end
+      ul.navbar-nav.ml-atuo
+        li.nav-item
+          a.nav-link.active(aria-current="page" href="#")
+            i.far.fa-home.me-2
+            | 首頁
+        li.nav-item.dropdown
+          a#navbarDropdown.nav-link.dropdown-toggle(href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false")
+            i.far.fa-user-cog.me-2
+            | 個人管理
+          ul.dropdown-menu(aria-labelledby="navbarDropdown")
+            li
+              a.dropdown-item(href="#")
+                i.far.fa-history.me-2
+                | 歷次評鑑紀錄
+            li
+              a.dropdown-item(href="#")
+                i.far.fa-id-card.me-2
+                | 基本資料管理
+        li.nav-item
+          //-button#authBtn.logout-btn(onclick="handleAuthAction()")
+            span#authBtnText 🔐 登入
+          a.nav-link(href="#" onclick="handleAuthAction()")
+            i.far.fa-sign-in-alt.me-2
+            | 登入
+
+
+//-header.header
+  .logo-section
+    span.logo-icon ✦
+    span 長期照護評鑑系統
+  nav.nav-links
+    a(href="#home") 首頁
+    a(href="#evaluation") 評鑑管理
+  .user-section
+    span#userDisplay.user-icon
+      span#userIcon 👤
+      span#userName 訪客
+    button#authBtn.logout-btn(onclick="handleAuthAction()")
+      span#authBtnText 🔐 登入
+
+
+// 登入 Modal
+// 評鑑委員登入視窗
+#loginModal.modal.fade(tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true")
+  .modal-dialog.modal-dialog-centered
+    .modal-content
+      .modal-header
+        h5#loginModalLabel.modal-title
+          i.fas.fa-sign-in-alt.me-2
+          | 評鑑委員登入
+        button.btn-close(type="button" data-bs-dismiss="modal" aria-label="Close")
+      .modal-body
+        form#loginForm
+          .mb-3
+            label.form-label(for="username")
+              i.fas.fa-user.me-2
+              | 帳號
+            input#username.form-control(type="text" placeholder="請輸入帳號" required)
+          .mb-3
+            label.form-label(for="password")
+              i.fas.fa-lock.me-2
+              | 密碼
+            input#password.form-control(type="password" placeholder="請輸入密碼" required)
+          .mb-3.form-check
+            input#rememberMe.form-check-input(type="checkbox")
+            label.form-check-label(for="rememberMe")
+              | 記住我
+          .alert.alert-info(style="font-size: 14px;")
+            i.fas.fa-info-circle.me-2
+            strong 示範用帳號：
+            br
+            | 帳號：demo / 密碼：1234
+      .modal-footer.justify-content-center
+        button.btn.btn-outline-secondary(type="button" data-bs-dismiss="modal")
+          i.fas.fa-times.me-2
+          | 取消
+        button.btn.group-nav-btn(type="button" onclick="handleLogin()")
+          i.fas.fa-sign-in-alt.me-2
+          | 登入

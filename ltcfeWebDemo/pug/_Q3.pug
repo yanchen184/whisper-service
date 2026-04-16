@@ -1,0 +1,171 @@
+//- 第三題
+.accordion-item
+  .accordion-header(onclick="toggleAccordion(2)")
+    span.accordion-title A3 | 工作人員權益相關制度訂定及執行情形
+    span.accordion-icon
+      i.fas.fa-angle-down
+  .accordion-content
+    .accordion-body
+      // 填答區
+      .section-answer
+        h3.section-title.mb-4 機構自評
+          i.fas.fa-arrow-alt-right.fa-sm.ms-2.me-2
+          | (B)部分符合
+        h3.section-title 委員評分
+        .radio-group
+          label.radio-option
+            input(type="radio" name="rating3" value="A")
+            span.grade-label (A)
+            span.radio-label 符合
+          label.radio-option
+            input(type="radio" name="rating3" value="B")
+            span.grade-label (B)
+            span.radio-label 部分符合
+          label.radio-option
+            input(type="radio" name="rating3" value="C")
+            span.grade-label (C)
+            span.radio-label 不符合
+
+
+
+
+
+      // 基準說明
+      .section-block.criterion-description
+        h3.section-title 基準說明
+        .description-text
+          ol
+            li 訂定工作手冊，內容應明列機構組織架構，各單位及人員業務執掌、重要工作流程、緊急意外事件預防及處理辦法／流程（包括求助與通報等聯繫窗口、電話等資料）、個人資料檔案安全維護計畫，以及住民及家屬防火衛教、針對吸菸及情緒不穩住民之防範措施、危險物品保管安全之定期查檢。
+            li 訂定工作人員福利相關制度，包括：
+            ul
+              li 工作人員差假制度
+              li 教育訓練
+              li 薪資給付制度
+              li 退休撫恤制度
+              li 申訴制度
+              li 考核獎勵制度
+              li 勞健保之辦理
+              li 身心健康維護措施 … 等
+            li 確實依據制度執行，並有佐證資料。
+            li 至少每年一次審閱或修訂工作手冊及相關表單。
+          .alert.alert-info(style="font-size: 16px;")
+            i.fas.fa-info-circle.me-2
+            | 個人資料檔案安全維護計畫辦法之訂定，應依「私立長期照顧服務機構個人資料檔案安全維護計畫實施辦法」。
+
+      // 可折疊的評核方式與評分標準
+      .section-block
+        button.collapse-standards-btn(type="button" onclick="toggleStandards(3)")
+          h3.section-title 評核方式／評分標準
+          i.fas.fa-chevron-down
+        #standards3.collapse-standards-content
+          .standards-card
+            .standards-grid
+              .standards-section
+                h4 評核方式
+                ul
+                  li 檢視：
+                    ol
+                      li 最近之工作手冊內容及權益相關制度內容
+                      li 住民及家屬防火衛教之作業規範
+                      li 吸菸及情緒不穩住民之防範措施
+                      li 機構危險物品之定義及其保管安全之定期查驗規定
+                  li 重要工作流程包括：
+                    ol
+                      li 入（出）機構
+                      li 住民照顧技巧
+                      li 緊急或意外事件處理
+                      li 住民權益保障 … 等
+                  li 請工作人員說明如何執行各項工作、本身之職責、機構中現有之申訴、福利、教育訓練、進用原則及薪資等規定。
+                  li 工作人員勞保不得以農保等其他保險替代。
+                  li 身心健康維護措施係指：
+                    ol
+                      li 聚餐
+                      li 旅遊
+                      li 紓壓講座
+                      li 健康操 … 等。
+              .standards-section
+                h4 評分標準
+                ol
+                  li A：完全符合。
+                  li B：符合第 1、2、3 項。
+                  li C：符合第 1、2 項。
+                  li D：符合第 1 項。
+                  li E：完全不符合。
+
+      hr.sep
+
+      // 委員意見
+      .section-comment
+        .section-block
+          .d-flex.align-items-center
+            h3.section-title 委員意見
+            button.collapse-standards-btn.in-section-comment(type="button" onclick="togglePreviousComment(31)")
+              span
+                i.fas.fa-history
+                span 查看前次委員意見
+
+          // 前次委員意見折疊區域
+          #previousComment31.collapse-standards-content
+            .left-right-area(style="padding-bottom: 15px")
+              .left
+                i.fas.fa-comment-dots
+                .text 前次意見
+              .right
+                .last-comment
+                  div(style="margin-bottom: 8px;")
+                    span
+                      i.fas.fa-calendar.me-2
+                      | 評鑑日期：2024/09/15
+                  div(style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #BE5803;")
+                    | 機構已訂定年度業務計畫，內容包含目標設定及執行策略，符合評鑑基準。建議未來可加強量化指標的設定，以利後續追蹤執行成效。
+
+          .left-right-area
+            .left
+              a.btn.btn-microphone(href="javascript:void(0)")
+                i.fas.fa-microphone
+                .text 備忘錄
+            .right
+              textarea.comment-textarea(placeholder="在此輸入「備忘錄」或使用語音輸入")
+
+          .left-right-area
+            .left
+              a.btn.btn-microphone(href="javascript:void(0)")
+                i.fas.fa-microphone
+                .text 主要意見
+            .right
+              textarea.comment-textarea(placeholder="在此輸入「主要意見」或使用語音輸入")
+
+          .left-right-area
+            .left
+              a.btn.btn-ai(href="javascript:void(0)")
+                i.fas.fa-microchip-ai
+                .text AI產製
+            .right
+              textarea.comment-textarea(placeholder="")
+                | 1.實際檢視執行情形後：
+                | 實際情況：…
+                | 與指標不符：..
+
+
+          //-.voice-notice
+            | ⚠️ 語音轉文字功能需要網路連接才能使用
+
+      //- 組別導航
+      //-.group-navigation
+        .group-nav-spacer
+        button.group-nav-btn(onclick="navigateToGroup(1)")
+          | 下一題 →
+
+      //- 組別導航
+      //-.group-navigation
+        button.group-nav-btn(onclick="navigateToGroup(0)")
+          | ← 上一題
+        button.group-nav-btn(onclick="navigateToGroup(2)")
+          | 下一題 →
+
+
+      // 組別導航
+      .group-navigation
+        button.group-nav-btn(onclick="navigateToGroup(1)")
+          | ← 上一題
+        .group-nav-spacer

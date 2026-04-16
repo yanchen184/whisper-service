@@ -1,0 +1,910 @@
+html, body
+	height: 100%
+
+//基礎架構
+//結構：sticky-footer
+body
+	display: flex
+	flex-direction: column
+.global-wrapper
+	flex: 1 0 auto
+	&.flex-v
+		display: flex
+		flex-direction: column
+.footer
+	flex-shrink: 0
+
+body
+	//padding-top: 35px
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang TC", "Noto Sans TC", "Noto Sans CJK TC", "Microsoft JhengHei", "微軟正黑體", sans-serif
+	//background: #CBDBD0 url("../images/bg-site.jpg") no-repeat center bottom
+	//background-size: cover
+
+	background: #CBDBD0 url("../images/bg-site.jpg") fixed center bottom
+	background-size: cover
+// 網路狀態 Bar
+.network-status-bar
+	position: fixed
+	top: 0
+	left: 0
+	right: 0
+	height: 35px
+	display: flex
+	align-items: center
+	justify-content: center
+	font-size: 1rem
+	font-weight: 500
+	text-shadow: 0 0 4px rgba(0,0,0,.7)
+	z-index: 9999
+	transition: all 0.4s ease
+	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1)
+	pointer-events: none
+	background: linear-gradient(135deg, #dc3545cc 0%, #f05368cc 100%)
+	color: white
+	&.online
+		//background: linear-gradient(135deg, #28a745cc 0%, #34ce57cc 100%)
+		//color: white
+		top: -35px
+	//&.offline
+
+.network-status-icon
+	margin-right: 8px
+	font-size: 16px
+	animation: pulse 2s infinite
+
+@keyframes pulse
+	0%, 100%
+		opacity: 1
+	50%
+		opacity: 0.6
+
+.network-status-text
+	letter-spacing: 0.5px
+
+//導航
+#nav
+	background-color: white
+	box-shadow: 0 2px 4px rgba(0,0,0,0.1)
+	.userStatus
+		padding: 3px 8px
+		border: 1px solid #bdbdbd
+		border-radius: 6px
+
+// 網路狀態指示
+#netStatusIndicator
+	transition: all .4s
+	&.online
+		color: #34ce57
+	&.offline
+		color: #f05368
+
+//主體區域
+.container
+	max-width: 1200px
+	margin: 30px auto
+	padding: 0 20px
+	.content-card
+		background-color: white
+		padding: 45px 15px
+		border-radius: 8px
+		box-shadow: 0 2px 8px rgba(0,0,0,0.1)
+
+.page-title
+	font-size: 30px
+	margin-bottom: 20px
+	color: #585757
+	text-align: center
+.deco-bar
+	position: relative
+	border-bottom: 2px solid #E1E1E3
+	margin-bottom: 20px
+	border-radius: 5px
+	&:after
+		content: ''
+		width: 80px
+		height: 5px
+		background: linear-gradient(90deg, #FA7E0A 0%, #FFA80D 100%)
+		position: absolute
+		left: 50%
+		bottom: 0
+		border-radius: 5px
+		transform: translateX(-50%)
+
+.progress-section
+	margin-bottom: 30px
+	display: flex
+	align-items: center
+	gap: 10px
+	.progress-bar
+		width: 100%
+		height: 16px
+		background-color: #e0e0e0
+		border-radius: 15px
+		overflow: hidden
+	.progress-fill
+		//width: 33.33%
+		height: 100%
+		border-radius: 15px
+		//background-color: #4a90e2
+		background: linear-gradient(90deg, #3072bf 0%, #4a90e2 100%)
+		transition: width 0.3s ease
+	.progress-text
+		text-align: right
+		color: #666
+		font-size: 14px
+		white-space: nowrap
+
+// 類別標題
+.cate-title
+	display: flex
+	align-items: center
+	.cate
+		display: flex
+		justify-content: center
+		align-items: center
+		flex-shrink: 0
+
+		width: 75px
+		height: 75px
+		border-radius: 50%
+		color: #ED6C00
+		border: 5px solid
+		background-color: white
+
+		font-size: 30px
+		font-weight: bold
+
+		z-index: 2
+
+	.title
+		height: 80%
+		display: inline-flex
+		justify-content: center
+		align-items: center
+		font-size: 20px
+		font-weight: bold
+		color: #BE5803
+		background-color: #FFF0E4
+		border: 1px solid
+		border-radius: 8px
+		//padding: 10px 15px 10px 40px
+		//margin-left: -25px
+		width: 100%
+		padding: 10px 20px
+		z-index: 1
+
+// 手風琴樣式
+.accordion-container
+	margin-top: 20px
+
+.accordion-item
+	border: 1px solid #e0e0e0!important
+	border-radius: 8px!important
+	margin-bottom: 15px
+	overflow: hidden
+	transition: all 0.3s ease
+	box-shadow: none
+	//&:hover
+	box-shadow: 0 2px 8px rgba(0,0,0,0.1)
+
+.accordion-header
+	background-color: #f8f9fa
+	padding: 12px 18px
+	cursor: pointer
+	display: flex
+	justify-content: space-between
+	align-items: center
+	transition: background-color 0.3s ease
+	&:hover
+		background-color: #e9ecef
+	&.active
+		//background-color: #4a90e2
+		background: linear-gradient(90deg, #497F34 0%, #6C9B5A 100%)
+		color: white
+		.accordion-title
+			color: white
+			text-shadow: 0 0 6px rgba(black,.3)
+
+.accordion-title
+	color: #656565
+	font-size: 18px
+	letter-spacing: 1px
+	font-weight: bold
+
+.accordion-icon
+	font-size: 20px
+	transition: transform 0.3s ease
+	&.active
+		transform: rotate(180deg)
+
+.accordion-content
+	max-height: 0
+	overflow: hidden
+	transition: max-height 0.4s ease
+	&.active
+		max-height: 3000px
+
+.accordion-body
+	padding: 15px
+	.section-answer
+		border: 1px solid #CFCFCF
+		border-radius: 12px
+		padding: 15px
+		background-color: #FFFFE3
+		margin-bottom: 30px
+		.section-title
+			color: #BE5803
+			border-color: #BE5803
+			margin-left: 0
+
+.section-block
+	width: 100%
+	margin-bottom: 30px
+	&:last-child
+		margin-bottom: 0
+
+.section-title
+	font-size: 20px
+	font-weight: bold
+	margin-bottom: 15px
+	color: #578C42
+	border-left: 8px solid #578C42
+	padding-left: 10px
+	margin-left: 15px
+
+.description-text
+	color: #333
+	line-height: 1.8
+	margin-bottom: 20px
+	font-size: 18px
+
+.list-item
+	margin-bottom: 12px
+	color: #333
+	line-height: 1.8
+
+.evaluation-grid
+	display: grid
+	grid-template-columns: 1fr 1fr
+	gap: 30px
+
+.radio-group
+	margin-left: 15px
+	display: flex
+	flex-direction: column
+	gap: 10px
+
+.radio-option
+	display: flex
+	align-items: center
+	gap: 10px
+	input[type="radio"]
+		width: 18px
+		height: 18px
+		cursor: pointer
+
+.radio-label
+	cursor: pointer
+	color: #212529
+	font-size: 20px
+
+.grade-label
+	color: #212529
+	font-size: 20px
+
+.comment-textarea
+	display: block
+	width: 100%
+	min-height: 120px
+	max-height: 500px
+	padding: 15px
+	border: 1px solid #ddd
+	border-radius: 4px
+	font-size: 18px
+	font-family: inherit
+	resize: none
+	overflow-y: auto
+	transition: height 0.2s ease
+	&:focus
+		outline: none
+		border-color: #4a90e2
+		box-shadow: 0 0 0 3px rgba(74, 144, 226, 0.1)
+
+// 可折疊標準區域樣式
+.collapse-standards-btn
+	width: 100%
+	text-align: left
+	padding: 12px 15px
+	background-color: white
+	border: 1px solid #cccccc
+	border-radius: 6px
+	cursor: pointer
+	transition: all 0.3s ease
+	font-size: 15px
+	font-weight: 500
+	color: #198754
+	display: flex
+	align-items: center
+	justify-content: space-between
+	.section-title
+		margin-bottom: 0
+		margin-left: 0
+	&:hover
+		background-color: #f0f9f4
+		border-color: #157347
+	i.fa-book-open
+		margin-right: 8px
+	i.fa-chevron-down
+		transition: transform 0.3s ease
+		font-size: 14px
+	&.active i.fa-chevron-down
+		transform: rotate(180deg)
+
+	&.in-section-comment
+		width: auto
+		padding: 0
+		margin-bottom: 15px
+		color: #BE5803
+		border: 0
+		background-color: transparent
+		margin-left: 15px
+		font-size: 18px
+
+.collapse-standards-content
+	max-height: 0
+	overflow: hidden
+	transition: max-height 0.4s ease
+	&.show
+		max-height: 800px
+
+.standards-card
+	padding: 15px
+	//background-color: #f0f9f4
+	//border: 1.5px solid #198754
+	//border-radius: 6px
+	line-height: 1.8
+	h6
+		font-weight: 600
+		color: #198754
+		margin-bottom: 20px
+		display: flex
+		align-items: center
+	h6 i
+		margin-right: 8px
+
+.standards-grid
+	display: grid
+	grid-template-columns: 2fr 1fr
+	gap: 20px
+	color: #495057
+
+.standards-section
+	font-size: 18px
+	color: #0b5332
+	line-height: 1.75
+	h4
+		font-size: 18px
+		font-weight: 600
+		color: #BE5803
+		margin-bottom: 12px
+
+.standards-notice
+	margin-top: 20px
+	padding: 15px 20px
+	background-color: #fff3cd
+	border-left: 4px solid #ffc107
+	border-radius: 4px
+	i
+		color: #856404
+		margin-right: 8px
+	strong,
+	span
+		color: #856404
+
+hr.sep
+	border-top: 2px dashed #575757
+	margin-top: 0
+	margin-bottom: 30px
+
+.section-comment
+	display: flex
+	align-items: center
+	gap: 15px
+	margin-bottom: 15px
+	padding: 15px
+	background-color: #f8f9fa
+	border-radius: 8px
+	border: 1px solid #e0e0e0
+	.section-title
+		color: #5B5B5B
+		border-color: #5B5B5B
+		margin-left: 0
+
+.left-right-area
+	display: flex
+	.left
+		width: 120px
+		display: flex
+		gap: 10px
+		flex-direction: column
+		justify-content: center
+		align-items: center
+		font-size: 18px
+		color: #BE5803
+		flex-shrink: 0
+		i
+			color: #BE5803
+			font-size: 22px
+		.btn-microphone
+			width: 100px
+			padding: 10px
+			border: 1px solid #13992E
+			font-size: 18px
+			color: #13992E
+			background-color: #E5FFEA
+			i
+				font-size: 22px
+				color: #13992E
+				margin-bottom: 5px
+		.btn-ai
+			width: 100px
+			padding: 10px
+			border: 1px solid #B761F1
+			font-size: 18px
+			color: #9D37E2
+			background-color: #F4E4FF
+			i
+				font-size: 22px
+				color: #9D37E2
+				margin-bottom: 5px
+
+	.right
+		flex-grow: 1
+	&+.left-right-area
+		margin-top: 15px
+
+.last-comment
+	width: 100%
+	min-height: 120px
+	max-height: 500px
+	padding: 15px
+	border: 1px solid #BE5803
+	border-radius: 4px
+	font-size: 18px
+	overflow-y: auto
+	transition: height 0.2s ease
+	background-color: white
+	line-height: 1.75
+	color: #BE5803
+
+.footer
+	position: relative
+	z-index: 3
+	font-size: 14px
+	//text-align: center
+	background-color: #A67657
+	//background: transparent url("#{s.$asset-img-path}bg-footer.jpg")
+	//background-size: cover
+	color: white
+
+	hr
+		border: 1px dashed #ffffff
+		opacity: .5
+
+	// 響應式設計：在小螢幕上變回垂直排列
+	@media (max-width: 768px)
+		.contact-columns
+			flex-direction: column
+			gap: 20px
+
+		.main-contact,
+		.district-contact
+			width: 100%
+	.info
+		//text-shadow: 2px 2px 5px rgba(black, .5)
+		.content
+			position: relative
+			padding: 10px
+			//min-height: 100px
+		.main-contact, .district-contact
+			.list-title
+				font-size: 1.2rem
+				font-weight: bold
+				text-align: left
+				color: #f7ffb3
+			.list
+				display: flex
+				flex-wrap: wrap
+				margin-top: 5px
+			.item
+				padding: 1px 0
+				font-size: 1rem
+				display: flex
+				gap: 8px
+				font-weight: normal
+				text-align: right
+				width: 100%
+				@media (min-width: 800px)
+					width: 50%
+				@media (min-width: 1200px)
+					width: 33.33%
+
+				.title
+					width: 200px
+					text-align: right
+
+		.cert
+			position: absolute
+			top: 50%
+			transform: translateY(-50%)
+			right: 15px
+		a
+			display: inline-block
+			margin: 0 6px
+			color: lightgoldenrodyellow
+	.copyright
+		//height: 40px
+		font-size: .875rem
+		//background-color: rgba(41, 41, 41, 0.85)
+		background-color: #6A4B37
+		color: white
+		.content
+			padding: 8px 15px
+			text-align: center
+			text-shadow: 0 2px 4px rgba(black, .3)
+
+// 快速前往選單
+.quick-nav-bar
+	position: fixed
+	left: 0
+	top: 14%
+	background-color: white
+	border-top-right-radius: 10px
+	border-bottom-right-radius: 10px
+	box-shadow: 2px 2px 10px rgba(0,0,0,0.1)
+	padding: 15px 10px
+	display: flex
+	flex-direction: column
+	gap: 20px
+	z-index: 1000
+	text-align: center
+	hr
+		margin: 0
+		border-top: 1px dashed
+
+	.nav-item
+		cursor: pointer
+		transition: transform 0.2s ease
+		&:hover
+			transform: scale(1.05) translateX(3px)
+
+		.icon
+			font-size: 28px
+			margin-bottom: 5px
+			display: flex
+			justify-content: center
+			align-items: center
+			gap: 5px
+
+		.text
+			font-size: 14px
+			line-height: 1.2
+
+		// 快速導航樣式
+		&[title="快速導航"]
+			color: #a05200
+
+		// 機構資訊樣式
+		&[title="機構資訊"]
+			color: #4b8232
+
+		// 系統設定樣式
+		&[title="系統設定"]
+			color: #756058
+
+		// 暫存樣式
+		&[title="暫存"]
+			color: #2c7da0
+
+		// 送出樣式
+		&[title="送出"]
+			color: #e76f51
+
+
+
+
+
+
+
+
+
+
+
+
+
+// 機構資料 Modal
+.facility-modal
+	position: fixed
+	top: 0
+	left: 0
+	right: 0
+	bottom: 0
+	background-color: rgba(0, 0, 0, 0.5)
+	display: none
+	align-items: center
+	justify-content: center
+	z-index: 10000
+	animation: fadeIn 0.3s ease
+	&.active
+		display: flex
+
+@keyframes fadeIn
+	from
+		opacity: 0
+	to
+		opacity: 1
+
+.facility-modal-content
+	border: 3px solid white
+	background-color: white
+	border-radius: 12px
+	width: 90%
+	max-width: 500px
+	max-height: 80vh
+	overflow-y: auto
+	box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3)
+	animation: slideUp 0.3s ease
+
+@keyframes slideUp
+	from
+		transform: translateY(50px)
+		opacity: 0
+	to
+		transform: translateY(0)
+		opacity: 1
+
+.facility-modal-header
+	background: linear-gradient(135deg, #497F34 0%, #6C9B5A 100%)
+	color: white
+	padding: 20px 24px
+	border-radius: 12px 12px 0 0
+	display: flex
+	justify-content: space-between
+	align-items: center
+
+.facility-modal-title
+	font-size: 18px
+	font-weight: 600
+	display: flex
+	align-items: center
+	gap: 10px
+
+.facility-modal-close
+	background: none
+	border: none
+	color: white
+	font-size: 28px
+	cursor: pointer
+	line-height: 1
+	padding: 0
+	width: 32px
+	height: 32px
+	display: flex
+	align-items: center
+	justify-content: center
+	border-radius: 50%
+	transition: background-color 0.3s ease
+	&:hover
+		background-color: rgba(255, 255, 255, 0.2)
+
+.facility-modal-body
+	padding: 5px 15px
+
+.facility-info-item
+	display: grid
+	grid-template-columns: 140px 1fr
+	gap: 15px
+	padding: 15px 0
+	border-bottom: 1px solid #e9ecef
+	&:last-child
+		border-bottom: none
+
+.facility-info-label
+	//font-weight: 600
+	color: #495057
+	display: flex
+	align-items: center
+	gap: 8px
+	i
+		color: #28a745
+		font-size: 16px
+
+.facility-info-value
+	color: #212529
+	font-weight: 500
+	display: flex
+	align-items: center
+
+.facility-info-badge
+	display: inline-block
+	padding: 4px 12px
+	background-color: #e7f4e7
+	color: #28a745
+	border-radius: 4px
+	font-size: 14px
+	font-weight: 600
+
+
+
+
+
+
+
+
+// 快速選單
+.quick-menu
+	position: fixed
+	left: 85px
+	top: 14%
+	//transform: translateY(-50%)
+	background-color: white
+	border-radius: 12px
+	box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15)
+	width: 300px
+	max-height: 500px
+	overflow-y: auto
+	display: none
+	z-index: 999
+	padding: 15px
+	&.active
+		display: block
+		animation: slideIn 0.3s ease
+
+@keyframes slideIn
+	from
+		opacity: 0
+		transform: translateX(-20px)
+	to
+		opacity: 1
+		transform: translateX(0)
+
+.quick-menu-header
+	padding: 10px 15px
+	border-bottom: 2px solid #f0f0f0
+	margin-bottom: 10px
+
+.quick-menu-title
+	font-size: 16px
+	font-weight: bold
+	color: #333
+
+.menu-item
+	margin-bottom: 10px
+
+.menu-item-header
+	padding: 12px 15px
+	background-color: #f8f9fa
+	border-radius: 8px
+	cursor: pointer
+	display: flex
+	justify-content: space-between
+	align-items: center
+	transition: all 0.3s ease
+	border: 2px solid transparent
+	&:hover
+		background-color: #e9ecef
+	&.current
+		background-color: #e3f2fd
+		border-color: #4a90e2
+	&.item-completed
+		background: linear-gradient(135deg, #e7faec 0%, #d5edda 100%)
+		border-color: #28a745
+		position: relative
+		.menu-item-title
+			color: #13832c
+	&.item-completed::after
+		content: '✓'
+		position: absolute
+		right: 40px
+		top: 50%
+		transform: translateY(-50%)
+		color: #28a745
+		font-weight: bold
+		font-size: 18px
+		animation: checkmarkPop 0.3s ease-out
+	&.item-completed .menu-item-code
+		color: #28a745
+		font-weight: bold
+	&.item-completed .menu-item-title
+		color: #155724
+		font-weight: 600
+	&.current.item-completed
+		background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)
+		border-color: #4a90e2
+	&.current.item-completed .menu-item-code
+		color: #4a90e2
+	&.current.item-completed .menu-item-title
+		color: #1976d2
+	&.current.item-completed::after
+		color: #4a90e2
+
+@keyframes checkmarkPop
+	0%
+		transform: translateY(-50%) scale(0)
+	50%
+		transform: translateY(-50%) scale(1.2)
+	100%
+		transform: translateY(-50%) scale(1)
+
+// 當項目既是當前又是已完成時，優先顯示當前樣式，但保留完成標記
+
+.menu-item-title
+	font-weight: 600
+	color: #333
+	font-size: 14px
+
+.menu-item-code
+	color: #4a90e2
+	font-weight: bold
+	font-size: 14px
+
+.menu-item-arrow
+	color: #999
+	transition: transform 0.3s ease
+	&.expanded
+		transform: rotate(90deg)
+
+.menu-item-groups
+	max-height: 0
+	overflow: hidden
+	transition: max-height 0.3s ease
+	padding-left: 15px
+	&.expanded
+		max-height: 200px
+		margin-top: 8px
+
+.group-item
+	padding: 10px 5px 10px 0
+	background-color: white
+	border-left: 3px solid #e0e0e0
+	margin-bottom: 6px
+	border-radius: 4px
+	cursor: pointer
+	transition: all 0.3s ease
+	font-size: 13px
+	color: #666
+
+	display: flex
+	align-items: center
+	.code
+		font-size: 16px
+		width: 35px
+		display: flex
+		justify-content: center
+		align-items: center
+		flex-shrink: 0
+		border-right: 1px solid
+		margin-right: 10px
+	.text
+		flex-grow: 1
+	&:hover
+		background-color: #f8f9fa
+		border-left-color: #4a90e2
+		color: #4a90e2
+	&.current
+		background-color: #e3f2fd
+		border-left-color: #4a90e2
+		color: #4a90e2
+		font-weight: 600
+	&.completed
+		border-left-color: #4caf50
+		background-color: #f2fbf2
+		.code, .text
+			color: #217724
+	&.completed::after
+		font-size: 20px
+		content: ' ✓'
+		color: #4caf50
+		font-weight: bold
+		width: 25px
+		flex-shrink: 0

@@ -1,0 +1,956 @@
+.header
+  background-color: white
+  padding: 15px 40px
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1)
+  display: flex
+  justify-content: space-between
+  align-items: center
+
+.logo-section
+  display: flex
+  align-items: center
+  gap: 10px
+  color: #4a90e2
+  font-size: 20px
+  font-weight: bold
+
+.logo-icon
+  font-size: 24px
+
+.nav-links
+  display: flex
+  gap: 30px
+  a
+    color: #333
+    text-decoration: none
+    font-size: 16px
+
+.user-section
+  display: flex
+  align-items: center
+  gap: 15px
+
+.user-icon
+  color: #666
+
+.logout-btn
+  background-color: #e74c3c
+  color: white
+  padding: 8px 20px
+  border: none
+  border-radius: 4px
+  cursor: pointer
+  font-size: 14px
+  transition: all 0.3s ease
+  &:hover
+    background-color: #c0392b
+    transform: translateY(-1px)
+    box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3)
+  &.login-mode
+    background-color: #4a90e2
+  &.login-mode:hover
+    background-color: #3a7bc8
+    box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3)
+
+// 登入按鈕樣式
+
+// Modal 自定義樣式
+.modal-content
+  border-radius: 12px
+  //border: none
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2)
+  border: 3px solid white
+
+.modal-header
+  //background: linear-gradient(135deg, #4a90e2 0%, #5ba3f5 100%)
+  background: linear-gradient(135deg, #497F34 0%, #6C9B5A 100%)
+  color: white
+  border-radius: 12px 12px 0 0
+  padding: 20px 24px
+  .btn-close
+    filter: brightness(0) invert(1)
+
+.modal-title
+  font-weight: 600
+  font-size: 18px
+
+.modal-body
+  padding: 30px 24px
+
+.modal-footer
+  border-top: 1px solid #e9ecef
+  padding: 16px 24px
+
+.form-label
+  font-weight: 500
+  color: #495057
+  margin-bottom: 8px
+
+.form-control
+  border: 1.5px solid #ced4da
+  border-radius: 6px
+  padding: 10px 14px
+  font-size: 14px
+  transition: all 0.3s ease
+  &:focus
+    border-color: #4a90e2
+    box-shadow: 0 0 0 0.2rem rgba(74, 144, 226, 0.25)
+
+.btn
+  padding: 10px 24px
+  border-radius: 6px
+  font-weight: 500
+  font-size: 14px
+  transition: all 0.3s ease
+
+.btn-primary
+  background-color: #4a90e2
+  border: none
+  &:hover
+    background-color: #3a7bc8
+    transform: translateY(-1px)
+    box-shadow: 0 4px 12px rgba(74, 144, 226, 0.3)
+
+.btn-secondary
+  background-color: #6c757d
+  border: none
+  &:hover
+    background-color: #5a6268
+
+// 使用者圖示動畫
+.user-icon
+  display: flex
+  align-items: center
+  gap: 8px
+  transition: all 0.3s ease
+  &:hover #userIcon
+    transform: scale(1.2)
+
+#userIcon
+  font-size: 18px
+  transition: transform 0.3s ease
+
+#userName
+  font-weight: 500
+  color: #333
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+.card-header
+  margin-bottom: 30px
+  padding-bottom: 20px
+  border-bottom: 2px solid #f0f0f0
+
+.card-title
+  font-size: 20px
+  font-weight: bold
+  margin-bottom: 20px
+  color: #333
+
+.item-info
+  display: grid
+  grid-template-columns: 120px 1fr
+  gap: 20px
+  margin-bottom: 20px
+
+.info-label
+  color: #666
+  font-size: 14px
+
+.info-value
+  color: #333
+  font-weight: bold
+
+.code-badge
+  color: #4a90e2
+  font-size: 18px
+  font-weight: bold
+
+// 評鑑項目進度條
+.item-progress-section
+  margin: 25px 0
+  padding: 20px
+  background-color: #f8f9fa
+  border-radius: 8px
+
+.item-progress-header
+  display: flex
+  justify-content: space-between
+  align-items: center
+  margin-bottom: 12px
+
+.item-progress-title
+  font-size: 14px
+  color: #666
+  font-weight: 500
+
+.item-progress-text
+  font-size: 14px
+  color: #4a90e2
+  font-weight: bold
+
+.item-progress-bar
+  width: 100%
+  height: 10px
+  background-color: #e0e0e0
+  border-radius: 5px
+  overflow: hidden
+  position: relative
+
+.item-progress-fill
+  height: 100%
+  background: linear-gradient(90deg, #4a90e2 0%, #5ba3f5 100%)
+  border-radius: 5px
+  transition: width 0.5s ease
+  width: 0%
+
+.progress-steps
+  display: flex
+  justify-content: space-between
+  margin-top: 15px
+
+.progress-step
+  flex: 1
+  text-align: center
+  position: relative
+  &.completed .progress-step-circle
+    background-color: #4a90e2
+    color: white
+    border-color: #4a90e2
+  &.active .progress-step-circle
+    background-color: white
+    color: #4a90e2
+    border-color: #4a90e2
+    box-shadow: 0 0 0 4px rgba(74, 144, 226, 0.2)
+  &.completed .progress-step-label
+    color: #4a90e2
+    font-weight: 500
+  &.active .progress-step-label
+    color: #4a90e2
+    font-weight: bold
+
+.progress-step-circle
+  width: 32px
+  height: 32px
+  border-radius: 50%
+  background-color: #e0e0e0
+  color: #999
+  display: flex
+  align-items: center
+  justify-content: center
+  margin: 0 auto 8px
+  font-weight: bold
+  font-size: 14px
+  transition: all 0.3s ease
+  border: 3px solid #e0e0e0
+
+.progress-step-label
+  font-size: 12px
+  color: #999
+  transition: color 0.3s ease
+
+
+
+
+
+
+
+// 組別導航按鈕
+.group-navigation
+  display: flex
+  justify-content: space-between
+  margin-top: 30px
+  padding-top: 20px
+  border-top: 1px solid #e0e0e0
+
+.group-nav-btn
+  padding: 10px 24px
+  border: 1px solid #497F34
+  background-color: white
+  color: #497F34
+  border-radius: 4px
+  cursor: pointer
+  font-size: 14px
+  transition: all 0.3s
+  display: flex
+  align-items: center
+  gap: 8px
+  &:hover
+    background-color: #386826
+    color: white
+  &:disabled
+    opacity: 0.5
+    cursor: not-allowed
+    border-color: #ddd
+    color: #999
+  &:disabled:hover
+    background-color: white
+    color: #999
+
+.group-nav-spacer
+  flex: 1
+
+
+
+
+
+
+
+
+// 錄音控制區
+.voice-control
+  display: flex
+  align-items: center
+  gap: 15px
+  margin-bottom: 15px
+  padding: 15px
+  background-color: #f8f9fa
+  border-radius: 8px
+  border: 1px solid #e0e0e0
+
+.voice-btn
+  width: 50px
+  height: 50px
+  border-radius: 50%
+  border: none
+  background-color: #4a90e2
+  color: white
+  font-size: 24px
+  cursor: pointer
+  display: flex
+  align-items: center
+  justify-content: center
+  transition: all 0.3s ease
+  box-shadow: 0 2px 8px rgba(74, 144, 226, 0.3)
+  &:hover:not(:disabled)
+    background-color: #3a7bc8
+    transform: scale(1.05)
+  &:disabled
+    background-color: #ccc
+    cursor: not-allowed
+    box-shadow: none
+  &.recording
+    background-color: #e74c3c
+    animation: pulse 1.5s infinite
+
+@keyframes pulse
+  0%, 100%
+    transform: scale(1)
+  50%
+    transform: scale(1.1)
+
+.voice-status
+  flex: 1
+  display: flex
+  flex-direction: column
+  gap: 5px
+
+.voice-status-text
+  font-size: 14px
+  color: #333
+  font-weight: 500
+
+.voice-status-detail
+  font-size: 12px
+  color: #666
+
+.voice-timer
+  font-family: 'Courier New', monospace
+  font-weight: bold
+  color: #e74c3c
+
+.network-indicator
+  display: flex
+  align-items: center
+  gap: 5px
+  font-size: 12px
+  padding: 5px 10px
+  border-radius: 4px
+  background-color: white
+  &.online
+    color: #4caf50
+  &.offline
+    color: #e74c3c
+
+.network-dot
+  width: 8px
+  height: 8px
+  border-radius: 50%
+  background-color: currentColor
+  &.pulse
+    animation: networkPulse 2s infinite
+
+@keyframes networkPulse
+  0%, 100%
+    opacity: 1
+  50%
+    opacity: 0.3
+
+.voice-waveform
+  display: none
+  align-items: center
+  gap: 3px
+  height: 30px
+  &.active
+    display: flex
+
+.wave-bar
+  width: 3px
+  background-color: #e74c3c
+  border-radius: 2px
+  animation: waveAnimation 1s ease-in-out infinite
+  &:nth-child(1)
+    animation-delay: 0s
+  &:nth-child(2)
+    animation-delay: 0.1s
+  &:nth-child(3)
+    animation-delay: 0.2s
+  &:nth-child(4)
+    animation-delay: 0.3s
+  &:nth-child(5)
+    animation-delay: 0.4s
+
+@keyframes waveAnimation
+  0%, 100%
+    height: 5px
+  50%
+    height: 25px
+
+.voice-notice
+  font-size: 12px
+  color: #ff9800
+  margin-top: 8px
+  display: flex
+  align-items: center
+  gap: 5px
+
+// 拍照功能
+.camera-btn
+  width: 50px
+  height: 50px
+  border-radius: 50%
+  border: none
+  background-color: #9c27b0
+  color: white
+  font-size: 24px
+  cursor: pointer
+  display: flex
+  align-items: center
+  justify-content: center
+  transition: all 0.3s ease
+  box-shadow: 0 2px 8px rgba(156, 39, 176, 0.3)
+  &:hover
+    background-color: #7b1fa2
+    transform: scale(1.05)
+  &:disabled
+    background-color: #ccc
+    cursor: not-allowed
+    box-shadow: none
+
+// 相機介面
+.camera-modal
+  display: none
+  position: fixed
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+  background-color: rgba(0, 0, 0, 0.95)
+  z-index: 2000
+  flex-direction: column
+  align-items: center
+  justify-content: center
+  &.active
+    display: flex
+
+.camera-header
+  position: absolute
+  top: 20px
+  left: 0
+  right: 0
+  display: flex
+  justify-content: space-between
+  align-items: center
+  padding: 0 20px
+  color: white
+
+.camera-title
+  font-size: 20px
+  font-weight: bold
+
+.camera-close-btn
+  width: 40px
+  height: 40px
+  border-radius: 50%
+  border: none
+  background-color: rgba(255, 255, 255, 0.2)
+  color: white
+  font-size: 24px
+  cursor: pointer
+  display: flex
+  align-items: center
+  justify-content: center
+  &:hover
+    background-color: rgba(255, 255, 255, 0.3)
+
+.camera-preview
+  width: 90%
+  max-width: 600px
+  aspect-ratio: 4/3
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)
+  border-radius: 12px
+  display: flex
+  align-items: center
+  justify-content: center
+  color: white
+  font-size: 18px
+  position: relative
+  overflow: hidden
+
+.camera-preview-text
+  text-align: center
+
+.camera-preview-icon
+  font-size: 64px
+  margin-bottom: 20px
+
+.camera-capture-btn
+  width: 80px
+  height: 80px
+  border-radius: 50%
+  border: 5px solid white
+  background-color: rgba(255, 255, 255, 0.3)
+  color: white
+  font-size: 36px
+  cursor: pointer
+  display: flex
+  align-items: center
+  justify-content: center
+  margin-top: 30px
+  transition: all 0.3s ease
+  &:hover
+    background-color: rgba(255, 255, 255, 0.5)
+    transform: scale(1.1)
+  &:active
+    transform: scale(0.95)
+
+// 照片列表
+.photo-section
+  margin-top: 15px
+
+.photo-header
+  display: flex
+  justify-content: space-between
+  align-items: center
+  margin-bottom: 10px
+
+.photo-title
+  font-size: 14px
+  font-weight: 600
+  color: #333
+
+.photo-count
+  font-size: 12px
+  color: #666
+  background-color: #f0f0f0
+  padding: 2px 8px
+  border-radius: 10px
+
+.photo-grid
+  display: grid
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr))
+  gap: 10px
+
+.photo-item
+  position: relative
+  aspect-ratio: 1
+  border-radius: 8px
+  overflow: hidden
+  background-color: #f0f0f0
+  cursor: pointer
+  transition: transform 0.2s ease
+  &:hover
+    transform: scale(1.05)
+  &:hover .photo-delete-btn
+    opacity: 1
+
+.photo-img
+  width: 100%
+  height: 100%
+  object-fit: cover
+
+.photo-delete-btn
+  position: absolute
+  top: 5px
+  right: 5px
+  width: 24px
+  height: 24px
+  border-radius: 50%
+  border: none
+  background-color: rgba(231, 76, 60, 0.9)
+  color: white
+  font-size: 14px
+  cursor: pointer
+  display: flex
+  align-items: center
+  justify-content: center
+  opacity: 0
+  transition: opacity 0.3s ease
+  &:hover
+    background-color: rgba(192, 57, 43, 1)
+
+.photo-empty
+  text-align: center
+  padding: 20px
+  color: #999
+  font-size: 14px
+
+
+// 閃光效果
+.camera-flash
+  position: fixed
+  top: 0
+  left: 0
+  right: 0
+  bottom: 0
+  background-color: white
+  z-index: 2001
+  opacity: 0
+  pointer-events: none
+  transition: opacity 0.1s ease
+  &.active
+    opacity: 1
+
+.navigation-buttons
+  display: flex
+  justify-content: space-between
+  margin-top: 40px
+  padding-top: 30px
+  border-top: 1px solid #e0e0e0
+
+.nav-btn
+  padding: 10px 30px
+  border: 1px solid #ddd
+  background-color: white
+  border-radius: 4px
+  cursor: pointer
+  font-size: 14px
+  color: #666
+  transition: all 0.3s
+  &:hover
+    background-color: #f5f5f5
+    border-color: #4a90e2
+    color: #4a90e2
+
+.menu-icon
+  position: fixed
+  left: 20px
+  top: 50%
+  transform: translateY(-50%)
+  width: 50px
+  height: 50px
+  background-color: #4a90e2
+  border-radius: 50%
+  display: flex
+  align-items: center
+  justify-content: center
+  box-shadow: 0 4px 12px rgba(74, 144, 226, 0.4)
+  cursor: pointer
+  z-index: 1000
+  transition: all 0.3s ease
+  color: white
+  font-size: 24px
+  font-weight: bold
+  &:hover
+    background-color: #3a7bc8
+    box-shadow: 0 6px 16px rgba(74, 144, 226, 0.6)
+    transform: translateY(-50%) scale(1.1)
+
+// 機構資料按鈕
+.facility-info-icon
+  position: fixed
+  left: 20px
+  top: calc(50% + 70px)
+  width: 50px
+  height: 50px
+  background-color: #28a745
+  border-radius: 50%
+  display: flex
+  align-items: center
+  justify-content: center
+  box-shadow: 0 4px 12px rgba(40, 167, 69, 0.4)
+  cursor: pointer
+  z-index: 1000
+  transition: all 0.3s ease
+  color: white
+  font-size: 24px
+  &:hover
+    background-color: #218838
+    box-shadow: 0 6px 16px rgba(40, 167, 69, 0.6)
+    transform: scale(1.1)
+
+
+
+
+
+
+
+@media (max-width: 768px)
+  .evaluation-grid
+    grid-template-columns: 1fr
+
+// === Injected by ChatGPT: FAB pair unified style (tight spacing) ===
+:root
+  --fab-size: 56px
+  --fab-gap: 8px
+  // tighter gap between the two buttons
+  --fab-shadow: 0 6px 16px rgba(0,0,0,0.18)
+
+.menu-icon,
+.facility-info-icon
+  position: fixed !important
+  left: 20px !important
+  width: var(--fab-size) !important
+  height: var(--fab-size) !important
+  border-radius: 50% !important
+  display: flex !important
+  align-items: center !important
+  justify-content: center !important
+  box-shadow: var(--fab-shadow) !important
+  font-size: 24px !important
+  color: #fff !important
+  z-index: 1100 !important
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease !important
+
+// Top button: Menu (blue)
+.menu-icon
+  top: calc(50% - (var(--fab-size) / 2) - var(--fab-gap)) !important
+  background-color: #4a90e2 !important
+  &:hover
+    background-color: #3a7bc8 !important
+    transform: translateY(-50%) scale(1.05) !important
+    box-shadow: 0 10px 24px rgba(74,144,226,0.35) !important
+  &:active,
+  &::after
+    content: ""
+    position: absolute
+    left: 50%
+    top: calc(100% + 2px)
+    transform: translateX(-50%)
+    width: 2px
+    height: calc(var(--fab-gap) * 1.8)
+    background: linear-gradient(180deg, rgba(74,144,226,.35), rgba(40,167,69,.35))
+    border-radius: 2px
+    pointer-events: none
+  &::before, .facility-info-icon::before
+    content: attr(data-icon) !important
+    // pull glyph from data-icon attr if present
+    color: #fff !important
+    font-size: 24px !important
+    line-height: 1 !important
+    display: inline-block !important
+  &:empty::before, .facility-info-icon:empty::before
+    content: "•" !important
+  &:not([data-icon])::before
+    content: "☰" !important
+    // hamburger
+
+// Bottom button: Facility info (green)
+.facility-info-icon
+  top: calc(50% + (var(--fab-size) / 2) + var(--fab-gap)) !important
+  background-color: #28a745 !important
+  &:hover
+    background-color: #218838 !important
+    transform: scale(1.05) !important
+    box-shadow: 0 10px 24px rgba(33,136,56,0.35) !important
+  &:active
+    transform: scale(.98) !important
+
+// Subtle pressed effect
+
+// Decorative connector to emphasize pairing
+// === End Injected by ChatGPT ===
+
+:root
+  --fab-size: 56px
+  --fab-gap: 8px
+  --fab-left: 20px
+  --fab-shadow: 0 6px 16px rgba(0,0,0,0.18)
+  --fab-blue: #4a90e2
+  --fab-blue-hover: #3a7bc8
+  --fab-green: #28a745
+  --fab-green-hover: #218838
+
+// Base normalization to guarantee identical circles
+.menu-icon,
+.facility-info-icon
+  color: transparent !important
+
+.facility-info-icon
+  box-shadow: 0 0 0 2px rgba(255,255,255,.85), var(--fab-shadow) !important
+
+.facility-info-icon
+  all: unset !important
+  // wipe inconsistent inherited styles
+  position: fixed !important
+  box-sizing: border-box !important
+  left: var(--fab-left) !important
+  width: var(--fab-size) !important
+  height: var(--fab-size) !important
+  border-radius: 50% !important
+  display: flex !important
+  align-items: center !important
+  justify-content: center !important
+  line-height: 1 !important
+  // consistent centering for glyphs
+  box-shadow: var(--fab-shadow) !important
+  z-index: 1100 !important
+  cursor: pointer !important
+  transition: transform .2s ease, box-shadow .2s ease, background-color .2s ease !important
+  outline: none !important
+  border: none !important
+  padding: 0 !important
+  &:not([data-icon])::before
+    content: "🏥" !important
+  &::before
+    transform: scale(0.9)
+
+// Use pseudo-elements for perfectly centered icons; hide original text
+
+// Fallback if no data-icon attribute: show original text via clone
+
+// Tweak visual balance so both look等大（emoji通常較大，縮一點）
+
+// Positions + colors
+.menu-icon
+  top: calc(50% - (var(--fab-size) / 2) - var(--fab-gap)) !important
+  background: var(--fab-blue) !important
+  &:hover
+    background: var(--fab-blue-hover) !important
+    transform: translateY(-1px) scale(1.04) !important
+  &:active, .facility-info-icon:active
+    transform: scale(.98) !important
+  &::after
+    content: "" !important
+    position: absolute !important
+    left: 50% !important
+    transform: translateX(-50%) !important
+    top: calc(100% + 2px) !important
+    width: 6px !important
+    height: calc(var(--fab-gap) * 1.8 + var(--fab-size)) !important
+    // reach to lower FAB
+    background: rgba(255,255,255,0.9) !important
+    border-radius: 999px !important
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.06) !important
+    z-index: -1 !important
+    // behind the buttons
+  &::before, .facility-info-icon::before
+    content: attr(data-icon) !important
+    position: absolute !important
+    left: 50% !important
+    top: 50% !important
+    transform: translate(-50%, -50%) !important
+    font-size: var(--fab-icon-size) !important
+    line-height: 1 !important
+    color: #fff !important
+  &:not([data-icon])::before
+    content: "☰" !important
+
+.facility-info-icon
+  top: calc(50% + (var(--fab-size) / 2) + var(--fab-gap)) !important
+  background: var(--fab-green) !important
+  &:hover
+    background: var(--fab-green-hover) !important
+    transform: translateY(1px) scale(1.04) !important
+
+// Vertical "rail" to emphasize pairing (sits behind the two FABs)
+
+// Optional subtle outer ring so兩顆更「一組」
+// === End v2 ===
+
+// === Injected by ChatGPT v3: smaller FABs + absolute-centered icons ===
+:root
+  --fab-size: 48px
+  // smaller circle
+  --fab-gap: 8px
+  // keep tight spacing
+  --fab-left: 18px
+  // pull slightly closer to edge
+  --fab-shadow: 0 5px 14px rgba(0,0,0,0.16)
+  --fab-blue: #4a90e2
+  --fab-blue-hover: #3a7bc8
+  --fab-green: #28a745
+  --fab-green-hover: #218838
+  --fab-icon-size: 22px
+  // icon size matched to 48px circle
+
+// Hard reset and base sizing for exact circles
+.menu-icon,
+.facility-info-icon
+  color: transparent !important
+
+.facility-info-icon
+  all: unset !important
+  position: fixed !important
+  box-sizing: border-box !important
+  left: var(--fab-left) !important
+  width: var(--fab-size) !important
+  height: var(--fab-size) !important
+  border-radius: 50% !important
+  display: block !important
+  // we'll center the ::before absolutely
+  box-shadow: 0 0 0 2px rgba(255,255,255,.9), var(--fab-shadow) !important
+  z-index: 1100 !important
+  cursor: pointer !important
+  background: #888 !important
+  position: fixed !important
+  overflow: hidden !important
+  &:not([data-icon])::before
+    content: "🏥" !important
+    transform: translate(-50%, -50%) scale(.9) !important
+
+// Absolute centered pseudo-icon for pixel-perfect vertical alignment
+
+// Fallback glyphs if no data-icon present
+
+// Positions + colors (no translateY on hover to avoid off-center illusion)
+.menu-icon
+  top: calc(50% - (var(--fab-size) / 2) - var(--fab-gap)) !important
+  background: var(--fab-blue) !important
+  &:hover
+    background: var(--fab-blue-hover) !important
+  &:active, .facility-info-icon:active
+    filter: brightness(.97) !important
+    transform: none !important
+  &::after
+    content: "" !important
+    position: absolute !important
+    left: 50% !important
+    transform: translateX(-50%) !important
+    top: calc(100% + 2px) !important
+    width: 4px !important
+    height: calc(var(--fab-gap) * 1.8 + var(--fab-size)) !important
+    background: rgba(255,255,255,0.95) !important
+    border-radius: 999px !important
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.06) !important
+    z-index: -1 !important
+
+.facility-info-icon
+  top: calc(50% + (var(--fab-size) / 2) + var(--fab-gap)) !important
+  background: var(--fab-green) !important
+  &:hover
+    background: var(--fab-green-hover) !important
+
+// More slender vertical rail behind to match smaller buttons
+// === End v3 ===

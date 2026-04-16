@@ -1,28 +1,80 @@
-import os
+from __future__ import annotations
 
-DEVICE = os.getenv("DEVICE", "auto")
-COMPUTE_TYPE = os.getenv("COMPUTE_TYPE", "int8")
-STREAM_MODEL = os.getenv("STREAM_MODEL", "phate334/Breeze-ASR-25-ct2")
-MAX_CONNECTIONS = int(os.getenv("MAX_CONNECTIONS", "20"))
-MAX_CHUNK_SIZE = int(os.getenv("MAX_CHUNK_SIZE", str(5 * 1024 * 1024)))  # 5MB
-CORS_ORIGINS = os.getenv("CORS_ORIGINS", "*").split(",")
-DEFAULT_LANGUAGE = os.getenv("DEFAULT_LANGUAGE", "zh")
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
 
-# 前端 VAD（瀏覽器偵測停頓切段）
-VAD_SILENCE_THRESHOLD = float(os.getenv("VAD_SILENCE_THRESHOLD", "0.015"))
-VAD_SILENCE_DURATION_MS = int(os.getenv("VAD_SILENCE_DURATION_MS", "800"))
-VAD_MIN_SPEECH_MS = int(os.getenv("VAD_MIN_SPEECH_MS", "500"))
-VAD_MAX_CHUNK_MS = int(os.getenv("VAD_MAX_CHUNK_MS", "10000"))
 
-# 後端 VAD（faster-whisper 過濾靜音段）
-BACKEND_VAD_ENABLED = os.getenv("BACKEND_VAD_ENABLED", "true").lower() == "true"
-BACKEND_VAD_THRESHOLD = float(os.getenv("BACKEND_VAD_THRESHOLD", "0.3"))
-BACKEND_VAD_SILENCE_MS = int(os.getenv("BACKEND_VAD_SILENCE_MS", "300"))
-BACKEND_VAD_SPEECH_PAD_MS = int(os.getenv("BACKEND_VAD_SPEECH_PAD_MS", "200"))
+class Settings(BaseSettings):
+    # 模型 / 裝置
+    DEVICE: str = "auto"
+    COMPUTE_TYPE: str = "int8"
+    STREAM_MODEL: str = "phate334/Breeze-ASR-25-ct2"
 
-# LLM 服務
-LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://llm:8001/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "MediaTek-Research/Breeze-2-8B-Instruct")
-LLM_MAX_TOKENS = int(os.getenv("LLM_MAX_TOKENS", "2048"))
-LLM_TEMPERATURE = float(os.getenv("LLM_TEMPERATURE", "0.3"))
-LLM_TIMEOUT = int(os.getenv("LLM_TIMEOUT", "120"))
+    # 傳輸限制
+    MAX_CHUNK_SIZE: int = 5 * 1024 * 1024  # 5 MB
+    CORS_ORIGINS: list[str] = ["*"]
+    DEFAULT_LANGUAGE: str = "zh"
+
+    # 後端 VAD（faster-whisper 過濾靜音段）
+    BACKEND_VAD_ENABLED: bool = True
+    BACKEND_VAD_THRESHOLD: float = 0.3
+    BACKEND_VAD_SILENCE_MS: int = 300
+    BACKEND_VAD_SPEECH_PAD_MS: int = 200
+
+    # LLM 報告服務
+    LLM_BASE_URL: str = "http://llm:8001/v1"
+    LLM_MODEL: str = "MediaTek-Research/Breeze-2-8B-Instruct"
+    LLM_MAX_TOKENS: int = 2048
+    LLM_TEMPERATURE: float = 0.3
+    LLM_TIMEOUT: int = 120
+    # 基準說明送進 prompt 前的最大字元數（約 270 tokens）
+    # 覆蓋 p95 資料集，僅最長 5% 指標會被截斷，且截斷的是條列清單後段
+    LLM_SPEC_MAX_CHARS: int = 400
+
+    # whisper.cpp HTTP 模式（設定後優先使用，否則使用 faster-whisper）
+    WHISPER_CPP_URL: str = ""
+    WHISPER_CPP_LANGUAGE: str = ""
+    WHISPER_CPP_TIMEOUT: int = 30
+
+    @field_validator("CORS_ORIGINS", mode="before")
+    @classmethod
+    def _split_cors(cls, v: str | list[str]) -> list[str]:
+        if isinstance(v, str):
+            return [origin.strip() for origin in v.split(",")]
+        return v
+
+    @field_validator("WHISPER_CPP_LANGUAGE", mode="after")
+    @classmethod
+    def _default_whisper_cpp_language(cls, v: str, info) -> str:
+        if not v:
+            return info.data.get("DEFAULT_LANGUAGE", "zh")
+        return v
+
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": True}
+
+
+settings = Settings()
+
+# 模組級別匯出（維持與既有 import 相容）
+DEVICE = settings.DEVICE
+COMPUTE_TYPE = settings.COMPUTE_TYPE
+STREAM_MODEL = settings.STREAM_MODEL
+MAX_CHUNK_SIZE = settings.MAX_CHUNK_SIZE
+CORS_ORIGINS = settings.CORS_ORIGINS
+DEFAULT_LANGUAGE = settings.DEFAULT_LANGUAGE
+
+BACKEND_VAD_ENABLED = settings.BACKEND_VAD_ENABLED
+BACKEND_VAD_THRESHOLD = settings.BACKEND_VAD_THRESHOLD
+BACKEND_VAD_SILENCE_MS = settings.BACKEND_VAD_SILENCE_MS
+BACKEND_VAD_SPEECH_PAD_MS = settings.BACKEND_VAD_SPEECH_PAD_MS
+
+LLM_BASE_URL = settings.LLM_BASE_URL
+LLM_MODEL = settings.LLM_MODEL
+LLM_MAX_TOKENS = settings.LLM_MAX_TOKENS
+LLM_TEMPERATURE = settings.LLM_TEMPERATURE
+LLM_TIMEOUT = settings.LLM_TIMEOUT
+LLM_SPEC_MAX_CHARS = settings.LLM_SPEC_MAX_CHARS
+
+WHISPER_CPP_URL = settings.WHISPER_CPP_URL
+WHISPER_CPP_LANGUAGE = settings.WHISPER_CPP_LANGUAGE
+WHISPER_CPP_TIMEOUT = settings.WHISPER_CPP_TIMEOUT
