@@ -1,68 +1,56 @@
+from __future__ import annotations
+
 import asyncio
-import io
-import json
 import logging
-import os
-import subprocess
 import threading
+from typing import Any
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
+from app.audio_processor import AudioProcessor
 from app.config import (
-    BACKEND_VAD_ENABLED, BACKEND_VAD_SILENCE_MS, BACKEND_VAD_SPEECH_PAD_MS, BACKEND_VAD_THRESHOLD,
-    COMPUTE_TYPE, DEFAULT_LANGUAGE, DEVICE, MAX_CHUNK_SIZE, MAX_CONNECTIONS, STREAM_MODEL,
-    VAD_MAX_CHUNK_MS, VAD_MIN_SPEECH_MS, VAD_SILENCE_DURATION_MS, VAD_SILENCE_THRESHOLD,
+    BACKEND_VAD_ENABLED,
+    BACKEND_VAD_SILENCE_MS,
+    BACKEND_VAD_SPEECH_PAD_MS,
+    BACKEND_VAD_THRESHOLD,
+    COMPUTE_TYPE,
+    DEFAULT_LANGUAGE,
+    DEVICE,
+    STREAM_MODEL,
+    WHISPER_CPP_URL,
 )
+from app.llm_client import generate_report
+from app.whisper_client import transcribe as whisper_cpp_transcribe
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 
-_stream_model = None
+# ──────────────────────────────────────────
+# faster-whisper 單例（僅未設定 WHISPER_CPP_URL 時使用）
+# ──────────────────────────────────────────
+_stream_model: Any = None
 _model_lock = threading.Lock()
-_connection_semaphore: asyncio.Semaphore | None = None
 
 
-def _get_semaphore() -> asyncio.Semaphore:
-    global _connection_semaphore
-    if _connection_semaphore is None:
-        _connection_semaphore = asyncio.Semaphore(MAX_CONNECTIONS)
-    return _connection_semaphore
-
-
-class ReportRequest(BaseModel):
-    transcript: str
-
-
-@router.post("/report")
-async def report(req: ReportRequest):
-    """接收轉錄文字，呼叫 LLM 產生結構化報告"""
-    if not req.transcript.strip():
-        return JSONResponse({"error": "transcript 不可為空"}, status_code=400)
-    from app.llm_client import generate_report
-    try:
-        result = await generate_report(req.transcript)
-        return result
-    except Exception as e:
-        logger.exception("LLM report error")
-        return JSONResponse({"error": f"LLM 服務錯誤: {e}"}, status_code=502)
-
-
-def _get_stream_model():
+def _get_stream_model() -> Any:
+    """Double-checked locking 取得 faster-whisper 單例。"""
     global _stream_model
     if _stream_model is not None:
         return _stream_model
     with _model_lock:
         if _stream_model is not None:
             return _stream_model
-        from faster_whisper import WhisperModel
+        from faster_whisper import WhisperModel  # 僅在需要時載入
+
         device = DEVICE
         compute_type = COMPUTE_TYPE
         if device == "auto":
             try:
                 import ctranslate2
+
                 device = "cuda" if "cuda" in ctranslate2.get_supported_compute_types("cuda") else "cpu"
             except Exception:
                 device = "cpu"
@@ -73,124 +61,138 @@ def _get_stream_model():
     return _stream_model
 
 
-@router.get("/config")
-async def get_config():
-    return {
-        "vad_silence_threshold": VAD_SILENCE_THRESHOLD,
-        "vad_silence_duration_ms": VAD_SILENCE_DURATION_MS,
-        "vad_min_speech_ms": VAD_MIN_SPEECH_MS,
-        "vad_max_chunk_ms": VAD_MAX_CHUNK_MS,
-        "default_language": DEFAULT_LANGUAGE,
-        "max_connections": MAX_CONNECTIONS,
-    }
+# ──────────────────────────────────────────
+# HTTP endpoints
+# ──────────────────────────────────────────
+
+
+class ReportRequest(BaseModel):
+    transcript: str
+    indicator_code: str                  # 指標代碼，例如 A1、B12
+    facility_type: str = "機構住宿式"    # 機構住宿式 / 綜合式
+    facility_subtype: str | None = None  # 綜合式子類別：居家式 / 社區式-日間照顧 / ...
+
+
+@router.post("/report")
+async def report(req: ReportRequest) -> JSONResponse | dict[str, Any]:
+    """接收轉錄文字 + 指標代碼，呼叫 LLM 產生評鑑意見。"""
+    if not req.transcript.strip():
+        return JSONResponse({"error": "transcript 不可為空"}, status_code=400)
+    if not req.indicator_code.strip():
+        return JSONResponse({"error": "indicator_code 不可為空"}, status_code=400)
+    try:
+        result = await generate_report(
+            req.transcript,
+            indicator_code=req.indicator_code,
+            facility_type=req.facility_type,
+            facility_subtype=req.facility_subtype,
+        )
+        return result
+    except Exception as e:
+        logger.exception("LLM report error")
+        return JSONResponse({"error": f"LLM 服務錯誤: {e}"}, status_code=502)
 
 
 @router.get("/health")
-async def health():
-    if _stream_model is None:
+async def health() -> JSONResponse | dict[str, str]:
+    """健康檢查：確認 Whisper 後端已就緒。"""
+    if not WHISPER_CPP_URL and _stream_model is None:
         return JSONResponse({"status": "loading"}, status_code=503)
-    return {"status": "ok", "model": STREAM_MODEL}
+    backend = "whisper.cpp" if WHISPER_CPP_URL else "faster-whisper"
+    return {"status": "ok", "backend": backend, "model": STREAM_MODEL}
+
+
+# ──────────────────────────────────────────
+# WebSocket /api/stream
+#
+# 前端協定：
+#   送出：raw PCM16 LE, 16kHz, mono, 30ms/包（binary）
+#   接收：
+#     { "type": "connected" }
+#     { "type": "processing" }
+#     { "type": "transcription", "text": "..." }
+#     { "type": "error", "message": "..." }
+# ──────────────────────────────────────────
+
+_WAV_MIN_BYTES = 1000
 
 
 @router.websocket("/stream")
-async def websocket_stream(ws: WebSocket):
-    sem = _get_semaphore()
-
-    if sem.locked():
-        await ws.accept()
-        await ws.send_json({"type": "error", "message": f"伺服器忙碌中（已達 {MAX_CONNECTIONS} 人上限），請稍後再試"})
-        await ws.close()
-        return
-
-    await sem.acquire()
+async def websocket_stream(ws: WebSocket) -> None:
+    """即時語音串流轉錄 WebSocket 端點。"""
     await ws.accept()
+    await ws.send_json({"type": "connected", "message": "WebSocket 已連接"})
 
-    model = None
-    language = "zh"
-    is_streaming = False
-    chunk_queue: asyncio.Queue = asyncio.Queue(maxsize=20)
-    worker_task: asyncio.Task | None = None
+    processor = AudioProcessor()
 
-    async def chunk_worker():
-        try:
-            while True:
-                chunk = await chunk_queue.get()
-                try:
-                    text = await asyncio.to_thread(
-                        _transcribe_chunk, model, chunk, language
-                    )
-                    if text.strip():
-                        logger.debug("Transcribed: '%s'", text.strip()[:100])
-                        await ws.send_json({"type": "transcript", "text": text.strip()})
-                except asyncio.CancelledError:
-                    break
-                except Exception as e:
-                    logger.warning("Stream transcribe error: %s", e)
-                finally:
-                    chunk_queue.task_done()
-        except asyncio.CancelledError:
-            pass
+    async def _poll_and_transcribe() -> None:
+        """每 200ms 輪詢一次，觸發轉錄並回傳結果。"""
+        while True:
+            await asyncio.sleep(0.2)
+            if not processor.should_process():
+                continue
+
+            wav = processor.get_wav_bytes()
+            processor.clear()
+
+            if not wav or len(wav) < _WAV_MIN_BYTES:
+                continue
+
+            await ws.send_json({"type": "processing"})
+            try:
+                text = await _transcribe(wav)
+                if text:
+                    await ws.send_json({"type": "transcription", "text": text})
+            except Exception:
+                logger.exception("轉錄失敗")
+                await ws.send_json({"type": "error", "message": "轉錄失敗，請重試"})
+
+    poll_task = asyncio.create_task(_poll_and_transcribe())
 
     try:
         while True:
             msg = await ws.receive()
-
-            if "text" in msg:
-                try:
-                    data = json.loads(msg["text"])
-                except json.JSONDecodeError:
-                    continue
-
-                if data.get("action") == "start":
-                    language = data.get("language", "zh")
-                    if language == "auto":
-                        language = None
-                    await ws.send_json({"type": "status", "message": "loading"})
-                    model = await asyncio.to_thread(_get_stream_model)
-                    is_streaming = True
-                    worker_task = asyncio.create_task(chunk_worker())
-                    await ws.send_json({"type": "status", "message": "started"})
-
-                elif data.get("action") == "stop":
-                    is_streaming = False
-                    if worker_task:
-                        worker_task.cancel()
-                        worker_task = None
-                    await ws.send_json({"type": "status", "message": "stopped"})
-
-            elif "bytes" in msg:
-                audio = msg["bytes"]
-                if not is_streaming or model is None:
-                    continue
-                if len(audio) < 1000 or len(audio) > MAX_CHUNK_SIZE:
-                    continue
-                if not chunk_queue.full():
-                    await chunk_queue.put(audio)
-
+            if "bytes" in msg and msg["bytes"]:
+                processor.add_frame(msg["bytes"])
     except WebSocketDisconnect:
         logger.info("Client disconnected")
+    except asyncio.CancelledError:
+        logger.info("WebSocket task cancelled")
     except Exception:
-        logger.exception("WebSocket error")
+        logger.exception("WebSocket 非預期錯誤")
+        try:
+            await ws.send_json({"type": "error", "message": "伺服器內部錯誤"})
+        except Exception:
+            pass  # 連線已關閉時送訊息會再拋出，直接忽略
     finally:
-        sem.release()
-        if worker_task:
-            worker_task.cancel()
+        poll_task.cancel()
+        try:
+            await poll_task
+        except asyncio.CancelledError:
+            pass
 
 
-def _transcribe_chunk(model, audio_bytes: bytes, language) -> str:
-    """用 ffmpeg pipe 模式轉換 webm → wav，不寫暫存檔"""
-    result = subprocess.run(
-        ["ffmpeg", "-y", "-i", "pipe:0", "-ar", "16000", "-ac", "1", "-f", "wav", "pipe:1"],
-        input=audio_bytes,
-        capture_output=True,
-        timeout=30,
-    )
-    if result.returncode != 0:
-        return ""
+# ──────────────────────────────────────────
+# 轉錄策略：優先 whisper.cpp，否則 faster-whisper
+# ──────────────────────────────────────────
 
-    wav_io = io.BytesIO(result.stdout)
-    transcribe_kwargs = {
-        "language": language,
+
+async def _transcribe(wav_bytes: bytes, language: str = DEFAULT_LANGUAGE) -> str:
+    """依設定選擇 whisper.cpp 或 faster-whisper 進行轉錄。"""
+    if WHISPER_CPP_URL:
+        return await whisper_cpp_transcribe(wav_bytes, language)
+
+    model = await asyncio.to_thread(_get_stream_model)
+    return await asyncio.to_thread(_transcribe_faster_whisper, model, wav_bytes, language)
+
+
+def _transcribe_faster_whisper(model: Any, wav_bytes: bytes, language: str) -> str:
+    """在 thread pool 中執行 faster-whisper 同步轉錄。"""
+    import io
+
+    wav_io = io.BytesIO(wav_bytes)
+    transcribe_kwargs: dict[str, Any] = {
+        "language": language if language != "auto" else None,
         "vad_filter": BACKEND_VAD_ENABLED,
         "condition_on_previous_text": True,
     }

@@ -1,0 +1,143 @@
+//- 第二題
+.accordion-item
+  .accordion-header(onclick="toggleAccordion(1)")
+    span.accordion-title A2 | 入出機構之管理
+    span.accordion-icon
+      i.fas.fa-angle-down
+  .accordion-content
+    .accordion-body
+      // 填答區
+      .section-answer
+        h3.section-title.mb-4 機構自評
+          i.fas.fa-arrow-alt-right.fa-sm.ms-2.me-2
+          | (B)部分符合
+        h3.section-title 委員評分
+        .radio-group
+          label.radio-option
+            input(type="radio" name="rating2" value="A")
+            span.grade-label (A)
+            span.radio-label 符合
+          label.radio-option
+            input(type="radio" name="rating2" value="B")
+            span.grade-label (B)
+            span.radio-label 部分符合
+          label.radio-option
+            input(type="radio" name="rating2" value="C")
+            span.grade-label (C)
+            span.radio-label 不符合
+
+
+
+
+
+      // 基準說明
+      .section-block.criterion-description
+        h3.section-title 基準說明
+        .description-text
+          ol
+            li 收容個案類型符合主管機關許可立案時收案類型。
+            li 機構收容人數符合主管機關許可立案床數。
+            li 訂有服務對象入出機構辦法，內容至少包含：
+            ul
+              li 服務對象
+              li 流程與評估機制
+              li 服務計畫
+            li 有專人辦理服務對象入出機構之業務並確實依據辦法執行。
+            li 最近 4 年無違規收容紀錄。
+            li 機構將地方主管機關核准之收費公開於機構網站上。
+
+      // 可折疊的評核方式與評分標準
+      .section-block
+        button.collapse-standards-btn(type="button" onclick="toggleStandards(2)")
+          h3.section-title 評核方式／評分標準
+          i.fas.fa-chevron-down
+        #standards2.collapse-standards-content
+          .standards-card
+            .standards-grid
+              .standards-section
+                h4 評核方式
+                ol
+                  li 「入機構」指入住；「出機構」指退住，退住之情形包含：•疾病改變、返家、轉介其他機構、往生…等。
+                  li 服務對象入出機構辦法，除要說明服務對象資格、入住相關規定外，應將入住後機構的評估機制及服務計畫擬定載入辦法，出機構則要說明相關條件，並檢視入出機構流程。
+                  li 檢視現場服務對象人數與收容個案類型是否符合主管機關許可立案之機構類型及人數。
+                  li 與服務對象會談了解其執行情形。
+                  li 向主管機關查詢機構近 4 年內是否有無違規收容紀錄。
+              .standards-section
+                h4 評分標準
+                ol
+                  li A：完全符合。
+                  li B：符合第 1 至 5 項。
+                  li C：符合第 1、2、3 項。
+                  li D：符合第 1、2 項。
+                  li E：完全不符合。
+
+      hr.sep
+
+      // 委員意見
+      .section-comment
+        .section-block
+          .d-flex.align-items-center
+            h3.section-title 委員意見
+            button.collapse-standards-btn.in-section-comment(type="button" onclick="togglePreviousComment(21)")
+              span
+                i.fas.fa-history
+                span 查看前次委員意見
+
+          // 前次委員意見折疊區域
+          #previousComment21.collapse-standards-content
+            .left-right-area(style="padding-bottom: 15px")
+              .left
+                i.fas.fa-comment-dots
+                .text 前次意見
+              .right
+                .last-comment
+                  div(style="margin-bottom: 8px;")
+                    span
+                      i.fas.fa-calendar.me-2
+                      | 評鑑日期：2024/09/15
+                  div(style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #BE5803;")
+                    | 機構已訂定年度業務計畫，內容包含目標設定及執行策略，符合評鑑基準。建議未來可加強量化指標的設定，以利後續追蹤執行成效。
+
+          .left-right-area
+            .left
+              a.btn.btn-microphone(href="javascript:void(0)")
+                i.fas.fa-microphone
+                .text 備忘錄
+            .right
+              textarea.comment-textarea(placeholder="在此輸入「備忘錄」或使用語音輸入")
+
+          .left-right-area
+            .left
+              a.btn.btn-microphone(href="javascript:void(0)")
+                i.fas.fa-microphone
+                .text 主要意見
+            .right
+              textarea.comment-textarea(placeholder="在此輸入「主要意見」或使用語音輸入")
+
+          .left-right-area
+            .left
+              a.btn.btn-ai(href="javascript:void(0)")
+                i.fas.fa-microchip-ai
+                .text AI產製
+            .right
+              textarea.comment-textarea(placeholder="")
+                | 1.實際檢視執行情形後：
+                | 實際情況：…
+                | 與指標不符：..
+
+
+          //-.voice-notice
+            | ⚠️ 語音轉文字功能需要網路連接才能使用
+
+      //- 組別導航
+      //-.group-navigation
+        .group-nav-spacer
+        button.group-nav-btn(onclick="navigateToGroup(1)")
+          | 下一題 →
+
+      // 組別導航
+      .group-navigation
+        button.group-nav-btn(onclick="navigateToGroup(0)")
+          | ← 上一題
+        button.group-nav-btn(onclick="navigateToGroup(2)")
+          | 下一題 →

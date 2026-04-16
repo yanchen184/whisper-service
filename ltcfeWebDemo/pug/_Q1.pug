@@ -1,0 +1,154 @@
+//- 第一題
+.accordion-item
+  .accordion-header(onclick="toggleAccordion(0)")
+    span.accordion-title A1 | 業務計畫及營運（或政策）方針之擬訂與執行情形
+    span.accordion-icon
+      i.fas.fa-angle-down
+  .accordion-content
+    .accordion-body
+      // 填答區
+      .section-answer
+        h3.section-title.mb-4 機構自評
+          i.fas.fa-arrow-alt-right.fa-sm.ms-2.me-2
+          | (A)符合
+        h3.section-title 委員評分
+        .radio-group
+          label.radio-option
+            input(type="radio" name="rating1" value="A")
+            span.grade-label (A)
+            span.radio-label 符合
+          label.radio-option
+            input(type="radio" name="rating1" value="B")
+            span.grade-label (B)
+            span.radio-label 部分符合
+          label.radio-option
+            input(type="radio" name="rating1" value="C")
+            span.grade-label (C)
+            span.radio-label 不符合
+
+
+
+
+
+      // 基準說明
+      .section-block.criterion-description
+        h3.section-title 基準說明
+        .description-text
+          ol
+            li 依機構願景訂定年度業務計畫，以及短、中長程（3年以上）工作營運發展目標，並具可行性。
+            li 各項業務依計畫確實執行，並應有紀錄及具體成效。
+            li 定期檢視與修正計畫且有紀錄，並能針對計畫目標達成情形提出檢討改善策略。
+            li 應有董、監事會議，並符合下列相關規定：
+            ul
+              li (1) 董、監事會議，應依組織章程規定期間定期召開會議。
+              li (2) 有關會議前及會議後相關資料之核定／備查依主管機關規定辦理。
+              li (3) 議題具體表達機構重要經營方針。
+          .alert.alert-info(style="font-size: 16px;")
+            i.fas.fa-info-circle.me-2
+            | 公立機構不適用基準說明第4項。
+
+      // 可折疊的評核方式與評分標準
+      .section-block
+        button.collapse-standards-btn(type="button" onclick="toggleStandards(1)")
+          h3.section-title 評核方式／評分標準
+          i.fas.fa-chevron-down
+        #standards1.collapse-standards-content
+          .standards-card
+            .standards-grid
+              .standards-section
+                h4 評核方式
+                ol
+                  li 檢視業務計畫及短、中長程（3年以上）工作營運發展目標及執行情形。
+                  li 現場與業務負責人會談。
+                  li 年度業務計畫應於前1年度訂定，且不得以單一計畫或獎補助計畫替代。
+                  li 檢視法人董、監事會議相關資料。
+                  li 業務負責人未出席，本項逕選評核為 E。
+              .standards-section
+                h4 評分標準
+                ol
+                  li A：完全符合。
+                  li B：符合第 1、2、3 項。
+                  li C：符合第 1、2 項。
+                  li D：符合第 1 項。
+                  li E：完全不符合。
+
+      hr.sep
+
+      // 委員意見
+      .section-comment
+        .section-block
+          .d-flex.align-items-center
+            h3.section-title 委員意見
+            button.collapse-standards-btn.in-section-comment(type="button" onclick="togglePreviousComment(1)")
+              span
+                i.fas.fa-history
+                span 查看前次委員意見
+
+          // 錄音與拍照控制區
+          //-.voice-control
+            button#voiceBtn1.voice-btn(onclick="toggleRecording(1)" title="點擊開始錄音")
+              | 🎤
+            .voice-status
+              #voiceStatus1.voice-status-text 點擊麥克風開始錄音
+              #voiceDetail1.voice-status-detail
+            #waveform1.voice-waveform
+              .wave-bar
+              .wave-bar
+              .wave-bar
+              .wave-bar
+              .wave-bar
+            #networkStatus1.network-indicator
+              .network-dot
+              span 檢查網路...
+
+          // 前次委員意見折疊區域
+          #previousComment1.collapse-standards-content
+            .left-right-area(style="padding-bottom: 15px")
+              .left
+                i.fas.fa-comment-dots
+                .text 前次意見
+              .right
+                .last-comment
+                  div(style="margin-bottom: 8px;")
+                    span
+                      i.fas.fa-calendar.me-2
+                      | 評鑑日期：2024/09/15
+                  div(style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #BE5803;")
+                    | 機構已訂定年度業務計畫，內容包含目標設定及執行策略，符合評鑑基準。建議未來可加強量化指標的設定，以利後續追蹤執行成效。
+
+          .left-right-area
+            .left
+              a.btn.btn-microphone(href="javascript:void(0)")
+                i.fas.fa-microphone
+                .text 備忘錄
+            .right
+              textarea.comment-textarea(placeholder="在此輸入「備忘錄」或使用語音輸入")
+
+          .left-right-area
+            .left
+              a.btn.btn-microphone(href="javascript:void(0)")
+                i.fas.fa-microphone
+                .text 主要意見
+            .right
+              textarea.comment-textarea(placeholder="在此輸入「主要意見」或使用語音輸入")
+
+          .left-right-area
+            .left
+              a.btn.btn-ai(href="javascript:void(0)")
+                i.fas.fa-microchip-ai
+                .text AI產製
+            .right
+              textarea.comment-textarea(placeholder="")
+                | 1.實際檢視執行情形後：
+                | 實際情況：…
+                | 與指標不符：..
+
+
+          //-.voice-notice
+            | ⚠️ 語音轉文字功能需要網路連接才能使用
+
+      // 組別導航
+      .group-navigation
+        .group-nav-spacer
+        button.group-nav-btn(onclick="navigateToGroup(1)")
+          | 下一題 →

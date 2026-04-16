@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>長期照護評鑑系統</title>
+    <!-- Bootstrap CSS-->
+    <link rel="stylesheet" href="assets/javascripts/vendor/bootstrap/css/bootstrap.min.css">
+    <!-- Font Awesome-->
+    <link rel="stylesheet" href="assets/javascripts/vendor/fontawesome-pro/css/all.min.css">
+    <link rel="stylesheet" href="assets/javascripts/vendor/notyf/notyf.min.css">
+    <link rel="stylesheet" href="assets/stylesheets/committee-style.css">
+    <link rel="stylesheet" href="assets/stylesheets/style.css">
+  </head>
+  <body>
+    <!--導覽列 / 網路指示器 / 登入視窗-->
+    <!-- 網路狀態提示 Bar-->
+    <!-- 顯示網路連線狀態-->
+    <div class="network-status-bar online" id="networkStatusBar">
+      <span class="network-status-text" id="networkStatusText">語音服務未連線</span>
+      <span id="wsControls" style="margin-left:12px; display:inline-flex; align-items:center; gap:8px;">
+        <input id="wsUrlInput" type="text" value="ws://localhost:8000/api/stream" style="padding:2px 8px;border-radius:4px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.15);color:inherit;font-size:13px;width:220px;" />
+        <button id="wsConnectBtn" onclick="toggleWsConnection()" style="padding:2px 12px;border-radius:4px;border:none;background:rgba(255,255,255,.25);color:inherit;cursor:pointer;font-size:13px;">連線</button>
+      </span>
+    </div>
+    <!-- Bootstrap Navbar-->
+    <nav class="navbar navbar-expand-lg" id="nav">
+      <div class="container-fluid"><a class="navbar-brand" href="#"><img src="assets/images/logo.svg"></a>
+        <div class="online" id="netStatusIndicator"><i class="far fa-globe fa-2x"></i></div>
+        <div class="userStatus ms-2 me-auto">訪客</div>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation"><span class="navbar-toggler-icon"></span></button>
+        <div class="collapse navbar-collapse justify-content-end" id="navbarNav">
+          <ul class="navbar-nav ml-atuo">
+            <li class="nav-item"><a class="nav-link active" aria-current="page" href="#"><i class="far fa-home me-2"></i>首頁</a></li>
+            <li class="nav-item dropdown"><a class="nav-link dropdown-toggle" id="navbarDropdown" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><i class="far fa-user-cog me-2"></i>個人管理</a>
+              <ul class="dropdown-menu" aria-labelledby="navbarDropdown">
+                <li><a class="dropdown-item" href="#"><i class="far fa-history me-2"></i>歷次評鑑紀錄</a></li>
+                <li><a class="dropdown-item" href="#"><i class="far fa-id-card me-2"></i>基本資料管理</a></li>
+              </ul>
+            </li>
+            <li class="nav-item"><a class="nav-link" href="#" onclick="handleAuthAction()"><i class="far fa-sign-in-alt me-2"></i>登入</a></li>
+          </ul>
+        </div>
+      </div>
+    </nav>
+    <!-- 登入 Modal-->
+    <!-- 評鑑委員登入視窗-->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="loginModalLabel"><i class="fas fa-sign-in-alt me-2"></i>評鑑委員登入</h5>
+            <button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <form id="loginForm">
+              <div class="mb-3">
+                <label class="form-label" for="username"><i class="fas fa-user me-2"></i>帳號</label>
+                <input class="form-control" id="username" type="text" placeholder="請輸入帳號" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label" for="password"><i class="fas fa-lock me-2"></i>密碼</label>
+                <input class="form-control" id="password" type="password" placeholder="請輸入密碼" required>
+              </div>
+              <div class="mb-3 form-check">
+                <input class="form-check-input" id="rememberMe" type="checkbox">
+                <label class="form-check-label" for="rememberMe">記住我</label>
+              </div>
+              <div class="alert alert-info" style="font-size: 14px;"><i class="fas fa-info-circle me-2"></i><strong>示範用帳號：</strong><br>帳號：demo / 密碼：1234</div>
+            </form>
+          </div>
+          <div class="modal-footer justify-content-center">
+            <button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal"><i class="fas fa-times me-2"></i>取消</button>
+            <button class="btn group-nav-btn" type="button" onclick="handleLogin()"><i class="fas fa-sign-in-alt me-2"></i>登入</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="global-wrapper">
+      <div class="container">
+        <div class="content-card">
+          <h1 class="page-title">實地評鑑</h1>
+          <div class="deco-bar"></div>
+          <div class="progress-section">
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 0"></div>
+            </div>
+            <div class="progress-text">項目 1 / 3</div>
+          </div>
+          <div class="cate-title">
+            <!--.cate 住-->
+            <!--.title 業務計畫及營運（或政策）方針之擬訂與執行情形-->
+            <div class="title">經營管理效能</div>
+          </div>
+          <!-- 手風琴組件-->
+          <div class="accordion-container">
+            <!---->
+            <!---->
+            <!---->
+            <!---->
+            <!---->
+            <!-- 第一題-->
+            <div class="accordion-item">
+              <div class="accordion-header" onclick="toggleAccordion(0)"><span class="accordion-title">A1 | 業務計畫及營運（或政策）方針之擬訂與執行情形</span><span class="accordion-icon"><i class="fas fa-angle-down"></i></span></div>
+              <div class="accordion-content">
+                <div class="accordion-body">
+                  <!-- 填答區-->
+                  <div class="section-answer">
+                    <h3 class="section-title mb-4">機構自評<i class="fas fa-arrow-alt-right fa-sm ms-2 me-2"></i>(A)完全符合</h3>
+                    <h3 class="section-title">委員評分</h3>
+                    <div class="radio-group">
+					<label class="radio-option">
+                        <input disabled type="radio" name="rating1" value="E"><span class="grade-label">(E)</span><span class="radio-label">完全不符合</span>
+                      </label>
+					  <label class="radio-option">
+                        <input disabled type="radio" name="rating1" value="D"><span class="grade-label">(D)</span><span class="radio-label">符合第1項</span>
+                      </label>
+					  <label class="radio-option">
+                        <input disabled type="radio" name="rating1" value="C"><span class="grade-label">(C)</span><span class="radio-label">符合第1、2項</span>
+                      </label>
+					  <label class="radio-option">
+                        <input  type="radio" name="rating1" value="B"><span class="grade-label">(B)</span><span class="radio-label">符合第1、2、3項</span>
+                      </label>
+                      <label class="radio-option">
+                        <input disabled type="radio" name="rating1" value="A"><span class="grade-label">(A)</span><span class="radio-label">完全符合</span>
+                      </label>
+                      
+                      
+					  
+                    </div>
+                  </div>
+                  <!-- 基準說明-->
+                  <div class="section-block criterion-description">
+                    <h3 class="section-title">基準說明</h3>
+                    <div class="description-text">
+                      <ol>
+                        <li>依機構願景訂定年度業務計畫，以及短、中長程（3年以上）工作營運發展目標，並具可行性。</li>
+                        <li>各項業務依計畫確實執行，並應有紀錄及具體成效。</li>
+                        <li>定期檢視與修正計畫且有紀錄，並能針對計畫目標達成情形提出檢討改善策略。</li>
+                        <li>應有董、監事會議，並符合下列相關規定：</li>
+                        <ul>
+                          <li>(1) 董、監事會議，應依組織章程規定期間定期召開會議。</li>
+                          <li>(2) 有關會議前及會議後相關資料之核定／備查依主管機關規定辦理。</li>
+                          <li>(3) 議題具體表達機構重要經營方針。</li>
+                        </ul>
+                      </ol>
+                      <div class="alert alert-info" style="font-size: 16px;"><i class="fas fa-info-circle me-2"></i>公立機構不適用基準說明第4項。</div>
+                    </div>
+                  </div>
+                  <!-- 可折疊的評核方式與評分標準-->
+                  <div class="section-block">
+                    <button class="collapse-standards-btn" type="button" onclick="toggleStandards(1)">
+                      <h3 class="section-title">評核方式／評分標準／共識會議基準</h3><i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="collapse-standards-content" id="standards1">
+                      <div class="standards-card">
+                        <div class="standards-grid">
+                          <div class="standards-section">
+                            <h4>評核方式</h4>
+                            <ol>
+                              <li>檢視業務計畫及短、中長程（3年以上）工作營運發展目標及執行情形。</li>
+                              <li>現場與業務負責人會談。</li>
+                              <li>年度業務計畫應於前1年度訂定，且不得以單一計畫或獎補助計畫替代。</li>
+                              <li>檢視法人董、監事會議相關資料。</li>
+                              <li>業務負責人未出席，本項逕選評核為 E。</li>
+                            </ol>
+                          </div>
+                          <div class="standards-section">
+                            <h4>評分標準</h4>
+                            <ol>
+                              <li>A：完全符合。</li>
+                              <li>B：符合第 1、2、3 項。</li>
+                              <li>C：符合第 1、2 項。</li>
+                              <li>D：符合第 1 項。</li>
+                              <li>E：完全不符合。</li>
+                            </ol>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <hr class="sep">
+                  <!-- 委員意見-->
+                  <div class="section-comment">
+                    <div class="section-block">
+                      <div class="d-flex align-items-center">
+                        <h3 class="section-title">委員意見</h3>
+                        <button class="collapse-standards-btn in-section-comment" type="button" onclick="togglePreviousComment(1)"><span><i class="fas fa-history"></i><span>查看前次委員意見</span></span></button>
+                      </div>
+                      <!-- 錄音與拍照控制區-->
+                      <!-- 前次委員意見折疊區域-->
+                      <div class="collapse-standards-content" id="previousComment1">
+                        <div class="left-right-area" style="padding-bottom: 15px">
+                          <div class="left"><i class="fas fa-comment-dots"></i>
+                            <div class="text">委員原始意見</div>
+                          </div>
+                          <div class="right">
+                            <div class="last-comment">
+                              <div style="margin-bottom: 8px;"><span><i class="fas fa-calendar me-2"></i>評鑑日期：2024/09/15</span></div>
+                              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #BE5803;">(1) 性侵害與性騷擾之辦法應分開訂定。<BR>(2) 意外事件處理應納入。<BR>(3) 白班上午8點到下午4點中間應列休息時間。<BR>(4) 組織圖應有名稱及人數。<BR>(5) 修訂日期應詳列。</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="left-right-area">
+                        <div class="left"><a class="btn btn-microphone" href="javascript:void(0)" data-target="memo_0"><i class="fas fa-microphone"></i>
+                            <div class="text">備忘錄</div></a></div>
+                        <div class="right">
+                          <textarea id="memo_0" class="comment-textarea" placeholder="在此輸入「備忘錄」或使用語音輸入"></textarea>
+                        </div>
+                      </div>
+                      <div class="left-right-area">
+                        <div class="left"><a class="btn btn-microphone" href="javascript:void(0)" data-target="opinion_0"><i class="fas fa-microphone"></i>
+                            <div class="text">主要意見</div></a></div>
+                        <div class="right">
+                          <textarea id="opinion_0" class="comment-textarea" placeholder="在此輸入「主要意見」或使用語音輸入"></textarea>
+                        </div>
+                      </div>
+                      <div class="left-right-area">
+                        <div class="left"><a class="btn btn-ai" href="javascript:void(0)" data-memo="memo_0" data-opinion="opinion_0" data-target="ai_0" data-code="A1"><i class="fas fa-microchip-ai"></i>
+                            <div class="text">AI產製</div></a></div>
+                        <div class="right">
+                          <textarea id="ai_0" class="comment-textarea" placeholder="">1.實際檢視執行情形後：
+實際情況：…
+與指標不符：..</textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- 組別導航-->
+                  <div class="group-navigation">
+                    <div class="group-nav-spacer"></div>
+                    <button class="group-nav-btn" onclick="navigateToGroup(1)">下一題 →</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!---->
+            <!---->
+            <!---->
+            <!---->
+            <!---->
+            <!-- 第二題-->
+            <div class="accordion-item">
+              <div class="accordion-header" onclick="toggleAccordion(1)"><span class="accordion-title">A2 | 入出機構之管理</span><span class="accordion-icon"><i class="fas fa-angle-down"></i></span></div>
+              <div class="accordion-content">
+                <div class="accordion-body">
+                  <!-- 填答區-->
+                  <div class="section-answer">
+                    <h3 class="section-title mb-4">機構自評<i class="fas fa-arrow-alt-right fa-sm ms-2 me-2"></i>(B)部分符合</h3>
+                    <h3 class="section-title">委員評分</h3>
+                    <div class="radio-group">
+                      <label class="radio-option">
+                        <input type="radio" name="rating2" value="A"><span class="grade-label">(A)</span><span class="radio-label">符合</span>
+                      </label>
+                      <label class="radio-option">
+                        <input type="radio" name="rating2" value="B"><span class="grade-label">(B)</span><span class="radio-label">部分符合</span>
+                      </label>
+                      <label class="radio-option">
+                        <input type="radio" name="rating2" value="C"><span class="grade-label">(C)</span><span class="radio-label">不符合</span>
+                      </label>
+                    </div>
+                  </div>
+                  <!-- 基準說明-->
+                  <div class="section-block criterion-description">
+                    <h3 class="section-title">基準說明</h3>
+                    <div class="description-text">
+                      <ol>
+                        <li>收容個案類型符合主管機關許可立案時收案類型。</li>
+                        <li>機構收容人數符合主管機關許可立案床數。</li>
+                        <li>訂有服務對象入出機構辦法，內容至少包含：</li>
+                        <ul>
+                          <li>服務對象</li>
+                          <li>流程與評估機制</li>
+                          <li>服務計畫</li>
+                        </ul>
+                        <li>有專人辦理服務對象入出機構之業務並確實依據辦法執行。</li>
+                        <li>最近 4 年無違規收容紀錄。</li>
+                        <li>機構將地方主管機關核准之收費公開於機構網站上。</li>
+                      </ol>
+                    </div>
+                  </div>
+                  <!-- 可折疊的評核方式與評分標準-->
+                  <div class="section-block">
+                    <button class="collapse-standards-btn" type="button" onclick="toggleStandards(2)">
+                      <h3 class="section-title">評核方式／評分標準</h3><i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="collapse-standards-content" id="standards2">
+                      <div class="standards-card">
+                        <div class="standards-grid">
+                          <div class="standards-section">
+                            <h4>評核方式</h4>
+                            <ol>
+                              <li>「入機構」指入住；「出機構」指退住，退住之情形包含：•疾病改變、返家、轉介其他機構、往生…等。</li>
+                              <li>服務對象入出機構辦法，除要說明服務對象資格、入住相關規定外，應將入住後機構的評估機制及服務計畫擬定載入辦法，出機構則要說明相關條件，並檢視入出機構流程。</li>
+                              <li>檢視現場服務對象人數與收容個案類型是否符合主管機關許可立案之機構類型及人數。</li>
+                              <li>與服務對象會談了解其執行情形。</li>
+                              <li>向主管機關查詢機構近 4 年內是否有無違規收容紀錄。</li>
+                            </ol>
+                          </div>
+                          <div class="standards-section">
+                            <h4>評分標準</h4>
+                            <ol>
+                              <li>A：完全符合。</li>
+                              <li>B：符合第 1 至 5 項。</li>
+                              <li>C：符合第 1、2、3 項。</li>
+                              <li>D：符合第 1、2 項。</li>
+                              <li>E：完全不符合。</li>
+                            </ol>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <hr class="sep">
+                  <!-- 委員意見-->
+                  <div class="section-comment">
+                    <div class="section-block">
+                      <div class="d-flex align-items-center">
+                        <h3 class="section-title">委員原始意見</h3>
+                        <button class="collapse-standards-btn in-section-comment" type="button" onclick="togglePreviousComment(21)"><span><i class="fas fa-history"></i><span>查看委員原始意見</span></span></button>
+                      </div>
+                      <!-- 前次委員意見折疊區域-->
+                      <div class="collapse-standards-content" id="previousComment21">
+                        <div class="left-right-area" style="padding-bottom: 15px">
+                          <div class="left"><i class="fas fa-comment-dots"></i>
+                            <div class="text">委員原始意見</div>
+                          </div>
+                          <div class="right">
+                            <div class="last-comment">
+                              <div style="margin-bottom: 8px;"><span><i class="fas fa-calendar me-2"></i>評鑑日期：2024/09/15</span></div>
+                              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #BE5803;">機構已訂定年度業務計畫，內容包含目標設定及執行策略，符合評鑑基準。建議未來可加強量化指標的設定，以利後續追蹤執行成效。</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="left-right-area">
+                        <div class="left"><a class="btn btn-microphone" href="javascript:void(0)" data-target="memo_1"><i class="fas fa-microphone"></i>
+                            <div class="text">備忘錄</div></a></div>
+                        <div class="right">
+                          <textarea id="memo_1" class="comment-textarea" placeholder="在此輸入「備忘錄」或使用語音輸入"></textarea>
+                        </div>
+                      </div>
+                      <div class="left-right-area">
+                        <div class="left"><a class="btn btn-microphone" href="javascript:void(0)" data-target="opinion_1"><i class="fas fa-microphone"></i>
+                            <div class="text">主要意見</div></a></div>
+                        <div class="right">
+                          <textarea id="opinion_1" class="comment-textarea" placeholder="在此輸入「主要意見」或使用語音輸入"></textarea>
+                        </div>
+                      </div>
+                      <div class="left-right-area">
+                        <div class="left"><a class="btn btn-ai" href="javascript:void(0)" data-memo="memo_1" data-opinion="opinion_1" data-target="ai_1" data-code="A2"><i class="fas fa-microchip-ai"></i>
+                            <div class="text">AI產製</div></a></div>
+                        <div class="right">
+                          <textarea id="ai_1" class="comment-textarea" placeholder="">1.實際檢視執行情形後：
+實際情況：…
+與指標不符：..</textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- 組別導航-->
+                  <div class="group-navigation">
+                    <button class="group-nav-btn" onclick="navigateToGroup(0)">← 上一題</button>
+                    <button class="group-nav-btn" onclick="navigateToGroup(2)">下一題 →</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!---->
+            <!---->
+            <!---->
+            <!---->
+            <!---->
+            <!-- 第三題-->
+            <div class="accordion-item">
+              <div class="accordion-header" onclick="toggleAccordion(2)"><span class="accordion-title">A3 | 工作人員權益相關制度訂定及執行情形</span><span class="accordion-icon"><i class="fas fa-angle-down"></i></span></div>
+              <div class="accordion-content">
+                <div class="accordion-body">
+                  <!-- 填答區-->
+                  <div class="section-answer">
+                    <h3 class="section-title mb-4">機構自評<i class="fas fa-arrow-alt-right fa-sm ms-2 me-2"></i>(B)部分符合</h3>
+                    <h3 class="section-title">委員評分</h3>
+                    <div class="radio-group">
+                      <label class="radio-option">
+                        <input type="radio" name="rating3" value="A"><span class="grade-label">(A)</span><span class="radio-label">符合</span>
+                      </label>
+                      <label class="radio-option">
+                        <input type="radio" name="rating3" value="B"><span class="grade-label">(B)</span><span class="radio-label">部分符合</span>
+                      </label>
+                      <label class="radio-option">
+                        <input type="radio" name="rating3" value="C"><span class="grade-label">(C)</span><span class="radio-label">不符合</span>
+                      </label>
+                    </div>
+                  </div>
+                  <!-- 基準說明-->
+                  <div class="section-block criterion-description">
+                    <h3 class="section-title">基準說明</h3>
+                    <div class="description-text">
+                      <ol>
+                        <li>訂定工作手冊，內容應明列機構組織架構，各單位及人員業務執掌、重要工作流程、緊急意外事件預防及處理辦法／流程（包括求助與通報等聯繫窗口、電話等資料）、個人資料檔案安全維護計畫，以及住民及家屬防火衛教、針對吸菸及情緒不穩住民之防範措施、危險物品保管安全之定期查檢。</li>
+                        <li>訂定工作人員福利相關制度，包括：</li>
+                        <ul>
+                          <li>工作人員差假制度</li>
+                          <li>教育訓練</li>
+                          <li>薪資給付制度</li>
+                          <li>退休撫恤制度</li>
+                          <li>申訴制度</li>
+                          <li>考核獎勵制度</li>
+                          <li>勞健保之辦理</li>
+                          <li>身心健康維護措施 … 等</li>
+                        </ul>
+                        <li>確實依據制度執行，並有佐證資料。</li>
+                        <li>至少每年一次審閱或修訂工作手冊及相關表單。</li>
+                      </ol>
+                      <div class="alert alert-info" style="font-size: 16px;"><i class="fas fa-info-circle me-2"></i>個人資料檔案安全維護計畫辦法之訂定，應依「私立長期照顧服務機構個人資料檔案安全維護計畫實施辦法」。</div>
+                    </div>
+                  </div>
+                  <!-- 可折疊的評核方式與評分標準-->
+                  <div class="section-block">
+                    <button class="collapse-standards-btn" type="button" onclick="toggleStandards(3)">
+                      <h3 class="section-title">評核方式／評分標準</h3><i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="collapse-standards-content" id="standards3">
+                      <div class="standards-card">
+                        <div class="standards-grid">
+                          <div class="standards-section">
+                            <h4>評核方式</h4>
+                            <ul>
+                              <li>檢視：
+                                <ol>
+                                  <li>最近之工作手冊內容及權益相關制度內容</li>
+                                  <li>住民及家屬防火衛教之作業規範</li>
+                                  <li>吸菸及情緒不穩住民之防範措施</li>
+                                  <li>機構危險物品之定義及其保管安全之定期查驗規定</li>
+                                </ol>
+                              </li>
+                              <li>重要工作流程包括：
+                                <ol>
+                                  <li>入（出）機構</li>
+                                  <li>住民照顧技巧</li>
+                                  <li>緊急或意外事件處理</li>
+                                  <li>住民權益保障 … 等</li>
+                                </ol>
+                              </li>
+                              <li>請工作人員說明如何執行各項工作、本身之職責、機構中現有之申訴、福利、教育訓練、進用原則及薪資等規定。</li>
+                              <li>工作人員勞保不得以農保等其他保險替代。</li>
+                              <li>身心健康維護措施係指：
+                                <ol>
+                                  <li>聚餐</li>
+                                  <li>旅遊</li>
+                                  <li>紓壓講座</li>
+                                  <li>健康操 … 等。</li>
+                                </ol>
+                              </li>
+                            </ul>
+                          </div>
+                          <div class="standards-section">
+                            <h4>評分標準</h4>
+                            <ol>
+                              <li>A：完全符合。</li>
+                              <li>B：符合第 1、2、3 項。</li>
+                              <li>C：符合第 1、2 項。</li>
+                              <li>D：符合第 1 項。</li>
+                              <li>E：完全不符合。</li>
+                            </ol>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <hr class="sep">
+                  <!-- 委員意見-->
+                  <div class="section-comment">
+                    <div class="section-block">
+                      <div class="d-flex align-items-center">
+                        <h3 class="section-title">委員意見</h3>
+                        <button class="collapse-standards-btn in-section-comment" type="button" onclick="togglePreviousComment(31)"><span><i class="fas fa-history"></i><span>查看前次委員意見</span></span></button>
+                      </div>
+                      <!-- 前次委員意見折疊區域-->
+                      <div class="collapse-standards-content" id="previousComment31">
+                        <div class="left-right-area" style="padding-bottom: 15px">
+                          <div class="left"><i class="fas fa-comment-dots"></i>
+                            <div class="text">前次意見</div>
+                          </div>
+                          <div class="right">
+                            <div class="last-comment">
+                              <div style="margin-bottom: 8px;"><span><i class="fas fa-calendar me-2"></i>評鑑日期：2024/09/15</span></div>
+                              <div style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed #BE5803;">機構已訂定年度業務計畫，內容包含目標設定及執行策略，符合評鑑基準。建議未來可加強量化指標的設定，以利後續追蹤執行成效。</div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      <div class="left-right-area">
+                        <div class="left"><a class="btn btn-microphone" href="javascript:void(0)" data-target="memo_2"><i class="fas fa-microphone"></i>
+                            <div class="text">備忘錄</div></a></div>
+                        <div class="right">
+                          <textarea id="memo_2" class="comment-textarea" placeholder="在此輸入「備忘錄」或使用語音輸入"></textarea>
+                        </div>
+                      </div>
+                      <div class="left-right-area">
+                        <div class="left"><a class="btn btn-microphone" href="javascript:void(0)" data-target="opinion_2"><i class="fas fa-microphone"></i>
+                            <div class="text">主要意見</div></a></div>
+                        <div class="right">
+                          <textarea id="opinion_2" class="comment-textarea" placeholder="在此輸入「主要意見」或使用語音輸入"></textarea>
+                        </div>
+                      </div>
+                      <div class="left-right-area">
+                        <div class="left"><a class="btn btn-ai" href="javascript:void(0)" data-memo="memo_2" data-opinion="opinion_2" data-target="ai_2" data-code="A3"><i class="fas fa-microchip-ai"></i>
+                            <div class="text">AI產製</div></a></div>
+                        <div class="right">
+                          <textarea id="ai_2" class="comment-textarea" placeholder="">1.實際檢視執行情形後：
+實際情況：…
+與指標不符：..</textarea>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <!-- 組別導航-->
+                  <div class="group-navigation">
+                    <button class="group-nav-btn" onclick="navigateToGroup(1)">← 上一題</button>
+                    <div class="group-nav-spacer"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <!-- 快速前往選單-->
+      <div class="quick-nav-bar">
+        <div class="nav-item" title="快速導航" onclick="toggleQuickMenu()">
+          <div class="icon"><i class="fas fa-arrow-left-to-dotted-line fa-flip-horizontal"></i></div>
+          <div class="text">快速導航</div>
+        </div>
+        <div class="nav-item" title="機構資訊" onclick="toggleFacilityModal()">
+          <div class="icon"><i class="fas fa-circle-info"></i></div>
+          <div class="text">機構資訊</div>
+        </div>
+        <hr>
+        <div class="nav-item" title="暫存">
+          <div class="icon"><i class="fas fa-save"></i></div>
+          <div class="text">暫存</div>
+        </div>
+        <div class="nav-item" title="送出">
+          <div class="icon"><i class="fas fa-paper-plane"></i></div>
+          <div class="text">送出</div>
+        </div>
+      </div>
+    </div>
+    <div class="quick-menu" id="quickMenu">
+      <div class="quick-menu-header">
+        <div class="quick-menu-title">快速導航</div>
+      </div>
+      <!-- 項目 A1-->
+      <div class="menu-item">
+        <div class="menu-item-header" onclick="toggleMenuItem(0, event)">
+          <div>
+            <!--span.menu-item-code A1--><span class="menu-item-title"> 經營管理效能</span>
+          </div><span class="menu-item-arrow">▶</span>
+        </div>
+        <div class="menu-item-groups">
+          <div class="group-item" onclick="jumpToItemAndGroup(0, 0, event)">
+            <div class="code">A1</div>
+            <div class="text">業務計畫及營運（或政策）方針之擬訂與執行情形</div>
+          </div>
+          <div class="group-item" onclick="jumpToItemAndGroup(0, 1, event)">
+            <div class="code">A2</div>
+            <div class="text">入出機構之管理</div>
+          </div>
+          <div class="group-item" onclick="jumpToItemAndGroup(0, 2, event)">
+            <div class="code">A3</div>
+            <div class="text">工作人員權益相關制度訂定及執行情形</div>
+          </div>
+        </div>
+      </div>
+      <!-- 項目 A3-->
+      <!-- 項目 A4-->
+    </div>
+    <!-- 機構基本資料 Modal-->
+    <div class="facility-modal" id="facilityModal">
+      <div class="facility-modal-content">
+        <div class="facility-modal-header">
+          <div class="facility-modal-title"><i class="fas fa-hospital"></i>簡易機構基本資料</div>
+          <button class="facility-modal-close" onclick="toggleFacilityModal()" title="機構基本資料">×</button>
+        </div>
+        <div class="facility-modal-body">
+          <div class="facility-info-item">
+            <div class="facility-info-label"><i class="fas fa-building"></i>機構種類</div>
+            <div class="facility-info-value"><span class="facility-info-badge">機構住宿式</span></div>
+          </div>
+          <div class="facility-info-item">
+            <div class="facility-info-label"><i class="fas fa-tag"></i>機構屬性</div>
+            <div class="facility-info-value">長照社團法人</div>
+          </div>
+          <div class="facility-info-item">
+            <div class="facility-info-label"><i class="fas fa-home"></i>機構名稱</div>
+            <div class="facility-info-value">XX長照住宿式機構</div>
+          </div>
+          <div class="facility-info-item">
+            <div class="facility-info-label"><i class="fas fa-user-tie"></i>機構負責人</div>
+            <div class="facility-info-value">王大明</div>
+          </div>
+          <div class="facility-info-item">
+            <div class="facility-info-label"><i class="fas fa-user-check"></i>業務負責人</div>
+            <div class="facility-info-value">李小華</div>
+          </div>
+          <div class="facility-info-item">
+            <div class="facility-info-label"><i class="fas fa-bed"></i>設立許可床數</div>
+            <div class="facility-info-value"><span class="facility-info-badge">80 床</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!---->
+    <!---->
+    <!---->
+    <!---->
+    <!-- 頁尾區域-->
+    <div class="footer">
+      <div class="info">
+        <div class="content mw-limited" style="max-width: 1200px; margin: auto;">衛福部諮詢專線 | 社團法人台灣長期照護專業協會：（XX）XXXX-XXXX<br>相關資訊 | 機構人力系統 https://Itcpap.mohw.gov.tw/molc</div>
+      </div>
+      <div class="copyright">
+        <div class="content mw-limited">瀏覽器建議使用 Google Chrome, Microsoft Edge 或 FireFox 最新版本</div>
+      </div>
+    </div>
+    <script src="assets/javascripts/committee-script.js"></script>
+    <script src="assets/javascripts/vendor/notyf/notyf.min.js"></script>
+    <script src="assets/javascripts/common.js"></script>
+    <!-- Bootstrap JS-->
+    <script src="assets/javascripts/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
+  </body>
+</html>
