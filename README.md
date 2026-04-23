@@ -81,12 +81,14 @@ COMPUTE_TYPE: float16
 
 ### 🔴 上線前必改
 
-| 項目 | 位置 | 目前值 | 要改成 |
+| 項目 | 位置 | 目前值 | 正式上線要改成 |
 |------|------|--------|--------|
-| `CORS_ORIGINS` | `k8s/configmap.yaml`（需自行加入這行） | 未設，程式 fallback 到 `http://localhost:3000,http://localhost:8081` | 正式網域，例如 `https://whisper.example.com` |
+| `CORS_ORIGINS` | `k8s/configmap.yaml` | **`*`（全開，方便部署測試用）** | 正式網域，例如 `https://whisper.example.com` |
 | `host` | `k8s/ingress.yaml` | 佔位符 `whisper.example.com` | 實際網域 |
 
-**`CORS_ORIGINS` 範例**：
+> ⚠️ **`CORS_ORIGINS` 目前設為 `*` 是為了方便首次部署測通**。正式對外服務前**務必**改為具體網域，否則任何網站都能呼叫本 API（資安風險）。
+
+**正式環境 `CORS_ORIGINS` 範例**：
 
 ```yaml
 # k8s/configmap.yaml
@@ -96,7 +98,6 @@ data:
 
 規則：
 - 多個網域用**逗號分隔**
-- **不要**用 `*`（安全風險）
 - **要帶 protocol**（`https://` / `http://`）
 - **不要**加斜線結尾
 

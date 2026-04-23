@@ -30,3 +30,6 @@ data:
   LLM_MODEL: "MediaTek-Research/Breeze-2-8B-Instruct"
   LLM_MAX_TOKENS: "2048"
   LLM_TEMPERATURE: "0.3"
+
+  # CORS（⚠️ 目前全開，正式上線前請改為具體網域，見 README 第三章）
+  CORS_ORIGINS: "*"
