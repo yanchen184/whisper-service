@@ -19,4 +19,12 @@ USER appuser
 
 ENV HF_HOME=/home/appuser/.cache/huggingface
 
+# Build 時預載模型到 image，部署不需要網路、冷啟動秒開
+# 使用 huggingface_hub.snapshot_download 僅下載檔案不載入到記憶體，避免 build OOM
+ARG STREAM_MODEL=phate334/Breeze-ASR-25-ct2
+ARG EMBEDDING_MODEL=sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2
+RUN python -c "from huggingface_hub import snapshot_download; \
+    snapshot_download('${STREAM_MODEL}'); \
+    snapshot_download('${EMBEDDING_MODEL}')"
+
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
