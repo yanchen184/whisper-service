@@ -1,23 +1,41 @@
 """
 資料預處理：將 Excel 指標 + 歷年 docx 意見表解析成 JSON 索引，供 LLM 使用。
 
-執行方式：
+執行方式（須先設定環境變數指向原始資料）：
+    export INDICATORS_EXCEL=/path/to/指標.xlsx
+    export FEWSHOT_DOCX_DIR=/path/to/委員評鑑結果資料目錄
     python3 -m app.data_preprocessor
 
 輸出：
     api/data/indicators.json   — 指標索引（key: 年度_機構種類_代碼）
     api/data/fewshot.json      — few-shot 索引（key: 代碼）
+
+注意：原始 Excel/docx 含評鑑委員個資與機構名稱，不納入版控。
+      正常部署無需重新執行此腳本，api/data/*.json 已 bake 進 repo。
 """
 
 import json
 import os
 import re
+import sys
 from collections import defaultdict
 from pathlib import Path
 
 DATA_DIR = Path(__file__).parent.parent / "data"
-EXCEL_PATH = Path("/Users/yanchen/workspace/whisper/【中央長照機構評鑑】歷年指標.xlsx")
-DOCX_BASE = Path("/Users/yanchen/workspace/whisper/【中央長照機構評鑑】委員評鑑結果資料for AI(112-114)")
+
+
+def _resolve_source_paths() -> tuple[Path, Path]:
+    """從環境變數讀取原始資料路徑，缺一即報錯退出。"""
+    excel = os.environ.get("INDICATORS_EXCEL")
+    docx_dir = os.environ.get("FEWSHOT_DOCX_DIR")
+    if not excel or not docx_dir:
+        sys.exit(
+            "錯誤：請設定環境變數 INDICATORS_EXCEL 與 FEWSHOT_DOCX_DIR 指向原始資料路徑。\n"
+            "範例：\n"
+            "  export INDICATORS_EXCEL=/path/to/指標.xlsx\n"
+            "  export FEWSHOT_DOCX_DIR=/path/to/委員評鑑結果資料"
+        )
+    return Path(excel), Path(docx_dir)
 
 YEAR_FOLDERS = {
     112: "112年委員評鑑結果資料",
@@ -26,7 +44,7 @@ YEAR_FOLDERS = {
 }
 
 
-def build_indicators() -> dict:
+def build_indicators(excel_path: Path) -> dict:
     """解析 Excel，建立指標索引。
 
     回傳結構：
@@ -43,7 +61,7 @@ def build_indicators() -> dict:
     """
     import openpyxl
 
-    wb = openpyxl.load_workbook(EXCEL_PATH, read_only=True)
+    wb = openpyxl.load_workbook(excel_path, read_only=True)
     ws = wb["工作表1"]
     rows = list(ws.iter_rows(values_only=True))
 
@@ -86,7 +104,7 @@ def _extract_code(cell_text: str) -> str | None:
     return None
 
 
-def build_fewshot() -> dict:
+def build_fewshot(docx_base: Path) -> dict:
     """解析歷年 docx，建立 few-shot 意見索引。
 
     回傳結構：
@@ -106,7 +124,7 @@ def build_fewshot() -> dict:
     MAX_PER_CODE = 30
 
     for year, folder_name in YEAR_FOLDERS.items():
-        folder = DOCX_BASE / folder_name
+        folder = docx_base / folder_name
         if not folder.exists():
             continue
 
@@ -154,16 +172,22 @@ def build_fewshot() -> dict:
 
 
 def main():
+    excel_path, docx_base = _resolve_source_paths()
+    if not excel_path.exists():
+        sys.exit(f"錯誤：INDICATORS_EXCEL 檔案不存在：{excel_path}")
+    if not docx_base.exists():
+        sys.exit(f"錯誤：FEWSHOT_DOCX_DIR 目錄不存在：{docx_base}")
+
     DATA_DIR.mkdir(parents=True, exist_ok=True)
 
     print("解析 Excel 指標...")
-    indicators = build_indicators()
+    indicators = build_indicators(excel_path)
     out_indicators = DATA_DIR / "indicators.json"
     out_indicators.write_text(json.dumps(indicators, ensure_ascii=False, indent=2), encoding="utf-8")
     print(f"  → {len(indicators)} 條指標 → {out_indicators}")
 
     print("解析歷年 docx few-shot...")
-    fewshot = build_fewshot()
+    fewshot = build_fewshot(docx_base)
     out_fewshot = DATA_DIR / "fewshot.json"
     out_fewshot.write_text(json.dumps(fewshot, ensure_ascii=False, indent=2), encoding="utf-8")
     total = sum(len(v) for v in fewshot.values())
