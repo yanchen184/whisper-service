@@ -23,6 +23,7 @@ class Settings(BaseSettings):
 
     # LLM 報告服務
     LLM_BASE_URL: str = "http://llm:8001/v1"
+    LLM_API_KEY: str = ""
     LLM_MODEL: str = "MediaTek-Research/Breeze-2-8B-Instruct"
     LLM_MAX_TOKENS: int = 2048
     LLM_TEMPERATURE: float = 0.3
@@ -69,6 +70,7 @@ BACKEND_VAD_SILENCE_MS = settings.BACKEND_VAD_SILENCE_MS
 BACKEND_VAD_SPEECH_PAD_MS = settings.BACKEND_VAD_SPEECH_PAD_MS
 
 LLM_BASE_URL = settings.LLM_BASE_URL
+LLM_API_KEY = settings.LLM_API_KEY
 LLM_MODEL = settings.LLM_MODEL
 LLM_MAX_TOKENS = settings.LLM_MAX_TOKENS
 LLM_TEMPERATURE = settings.LLM_TEMPERATURE

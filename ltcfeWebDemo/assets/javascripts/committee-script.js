@@ -327,6 +327,13 @@ window.addEventListener('DOMContentLoaded', function () {
     updateItemContent();
     updateQuickMenuState();
     bindVoiceButtons();
+
+    // 自動連線 WebSocket
+    const wsInput = document.getElementById('wsUrlInput');
+    if (wsInput && !wsInput.value.trim()) {
+        wsInput.value = 'ws://localhost:8000/api/stream';
+    }
+    wsConnect();
 });
 
 // 綁定所有麥克風按鈕與 AI 按鈕
@@ -515,7 +522,7 @@ async function toggleMic(textareaId) {
 
 async function startMic(textareaId) {
     if (!wsConnected) {
-        alert('請先連接語音服務（點擊頂部連線按鈕）');
+        wsConnect();
         return;
     }
     try {

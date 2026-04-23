@@ -22,6 +22,7 @@ from typing import Any
 import httpx
 
 from app.config import (
+    LLM_API_KEY,
     LLM_BASE_URL,
     LLM_MAX_TOKENS,
     LLM_MODEL,
@@ -122,7 +123,8 @@ async def _call_llm(system: str, user: str) -> str:
         httpx.HTTPStatusError: 後端回應非 2xx。
         httpx.TimeoutException: 請求逾時。
     """
-    async with httpx.AsyncClient(timeout=LLM_TIMEOUT) as client:
+    headers = {"Authorization": f"Bearer {LLM_API_KEY}"} if LLM_API_KEY else {}
+    async with httpx.AsyncClient(timeout=LLM_TIMEOUT, headers=headers) as client:
         resp = await client.post(
             f"{LLM_BASE_URL}/chat/completions",
             json={
