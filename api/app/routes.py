@@ -73,8 +73,8 @@ class ReportRequest(BaseModel):
     facility_subtype: str | None = None  # 綜合式子類別：居家式 / 社區式-日間照顧 / ...
 
 
-@router.post("/report")
-async def report(req: ReportRequest) -> JSONResponse | dict[str, Any]:
+@router.post("/report", response_model=None)
+async def report(req: ReportRequest) -> JSONResponse:
     """接收轉錄文字 + 指標代碼，呼叫 LLM 產生評鑑意見。"""
     if not req.transcript.strip():
         return JSONResponse({"error": "transcript 不可為空"}, status_code=400)
@@ -93,8 +93,8 @@ async def report(req: ReportRequest) -> JSONResponse | dict[str, Any]:
         return JSONResponse({"error": f"LLM 服務錯誤: {e}"}, status_code=502)
 
 
-@router.get("/health")
-async def health() -> JSONResponse | dict[str, str]:
+@router.get("/health", response_model=None)
+async def health() -> JSONResponse:
     """健康檢查：確認 Whisper 後端已就緒。"""
     if not WHISPER_CPP_URL and _stream_model is None:
         return JSONResponse({"status": "loading"}, status_code=503)

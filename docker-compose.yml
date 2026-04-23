@@ -12,7 +12,7 @@ services:
       - DEVICE=${DEVICE:-auto}
       - COMPUTE_TYPE=${COMPUTE_TYPE:-int8}
       - MAX_CONNECTIONS=${MAX_CONNECTIONS:-20}
-      - LLM_BASE_URL=http://llm:8001/v1
+      - LLM_BASE_URL=${LLM_BASE_URL:-http://llm:8001/v1}
       - LLM_MODEL=${LLM_MODEL:-MediaTek-Research/Breeze-2-8B-Instruct}
     volumes:
       - ./api/data:/app/data:ro
@@ -51,3 +51,4 @@ services:
       - "8081:80"
     depends_on:
       - api
+
