@@ -6,8 +6,9 @@ metadata:
 data:
   # 模型
   STREAM_MODEL: "phate334/Breeze-ASR-25-ct2"
-  DEVICE: "cuda"
-  COMPUTE_TYPE: "float16"
+  # 單 GPU 部署：GPU 留給 llm，api 走 CPU + int8 量化
+  DEVICE: "cpu"
+  COMPUTE_TYPE: "int8"
 
   # 連線
   MAX_CONNECTIONS: "20"

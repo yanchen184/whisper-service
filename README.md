@@ -58,7 +58,7 @@ docker build -f web/Dockerfile -t <registry>/whisper-web:<tag> ./web
 ```
 k8s/
 ├── configmap.yaml        # 環境變數（STREAM_MODEL、LLM_MODEL 等）
-├── deployment.yaml       # api 服務（2 replicas、8–16 Gi RAM、1 GPU）
+├── deployment.yaml       # api 服務（2 replicas、8–16 Gi RAM、**CPU only**）
 ├── llm-deployment.yaml   # LLM 服務（1 replica、1 GPU）
 ├── service.yaml
 ├── web-deployment.yaml
@@ -68,10 +68,21 @@ k8s/
 └── kustomization.yaml
 ```
 
+### GPU 資源分配（單 GPU 部署）
+
+本專案預設**單 GPU** 配置：
+
+| 服務 | 硬體 | 原因 |
+|------|------|------|
+| `api`（Breeze-ASR-25 語音辨識 + MiniLM embedding） | **CPU only**（int8 量化） | 模型小（~2 GB），CPU 可用；把 GPU 留給 LLM |
+| `llm`（Breeze-2-8B） | **1 顆 GPU**（VRAM ≥ 16 GB） | 8B LLM 非 GPU 不可，CPU 會慢到無法用 |
+
+若未來擴到 2 GPU，可把 `k8s/configmap.yaml` 的 `DEVICE` 改回 `cuda`、`COMPUTE_TYPE` 改回 `float16`，並在 `k8s/deployment.yaml` 的 `resources` 加回 `nvidia.com/gpu: "1"` 與 `nodeSelector / tolerations`。
+
 ### 🔴 必須檢查
 
-1. **GPU 節點 label**：`deployment.yaml` 與 `llm-deployment.yaml` 有 `nodeSelector: gpu: "true"`，確認叢集有節點帶這個 label。
-2. **GPU device plugin**：Pod 有 `nvidia.com/gpu` resource request，叢集要裝 `nvidia-device-plugin`。
+1. **GPU 節點 label**：`llm-deployment.yaml` 有 `nodeSelector: gpu: "true"`，確認叢集有節點帶這個 label。
+2. **GPU device plugin**：`llm` Pod 有 `nvidia.com/gpu` resource request，叢集要裝 `nvidia-device-plugin`。
 3. **image registry**：YAML 裡的 `image:` 目前是佔位符 `whisper-api:latest`（`imagePullPolicy: Never`），要改成你們的 registry 路徑。
 
 ### 🟡 其他注意事項
