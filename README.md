@@ -418,6 +418,8 @@ whisper-service/
 
 ## 分支差異（僅規格不同，程式碼完全一致）
 
+> **維護策略**：以 `main` 為唯一維護分支；`local` 已凍結為歷史快照，不再更新。本機測試請直接使用 `main`，依 Docker Compose 區段以環境變數覆寫 `STREAM_MODEL` 即可切為 `base` 模型。
+>
 > `main` 為生產配置（GPU），`local` 為本機測試配置（CPU）
 
 | 檔案 | 設定 | local | main |
