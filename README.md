@@ -57,38 +57,51 @@
 
 ---
 
-## 快速啟動
+## 快速啟動（Demo）
 
 ### 需求
 
+- **NVIDIA GPU（VRAM ≥ 16 GB）** — 跑 Breeze-2-8B 的最低門檻
 - Docker + Docker Compose
-- （GPU 加速）NVIDIA GPU + nvidia-container-toolkit
+- nvidia-container-toolkit（讓 Docker 能用 GPU）
+- 網路（首次 build image 要下載模型約 18 GB）
+
+> 沒 GPU 的話 `llm` 服務會起不來（8B 模型 CPU 跑不動）；若只想 demo 語音辨識，可先 `docker compose up api web`，跳過 llm。
 
 ### 1. 複製設定
 
 ```bash
 cp .env.example .env
-# 依需求修改 .env
+# 預設值可直接用，不需要改
 ```
 
-### 2. 啟動服務
+### 2. Build + 啟動服務
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-> `api/data/` 透過 volume 掛載進 container，需確認 `indicators.json` 與 `fewshot.json` 已存在。
-> 首次執行請見「本地開發」章節的資料預處理步驟。
+- **首次 build 約 30–60 分鐘**（下載 Whisper 1.5 GB + LLM 16 GB + Embedding 470 MB，模型會 bake 進 image）
+- **首次啟動後約 1–3 分鐘**（vLLM 載入模型到 GPU）
+
+檢查服務就緒：
+```bash
+curl http://localhost:8000/api/health
+# {"status":"ok","backend":"faster-whisper","model":"phate334/Breeze-ASR-25-ct2"}
+```
 
 ### 3. 開啟前端
 
-用瀏覽器開啟 `ltcfeWebDemo/index.html`，或透過靜態伺服器：
+用瀏覽器開啟 <http://localhost:8081>（Nginx 容器提供）。
+
+頁面頂部輸入 `ws://localhost:8000/api/stream` → 點「連線」即可開始 demo。
+
+### 停止 / 清除
 
 ```bash
-npx serve ltcfeWebDemo
+docker compose down          # 停止服務，保留 image
+docker compose down --rmi all # 連 image 一起刪（釋放 ~20GB）
 ```
-
-頁面頂部輸入 `ws://localhost:8000/api/stream` → 點「連線」。
 
 ---
 

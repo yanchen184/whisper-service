@@ -12,7 +12,8 @@ class Settings(BaseSettings):
 
     # 傳輸限制
     MAX_CHUNK_SIZE: int = 5 * 1024 * 1024  # 5 MB
-    CORS_ORIGINS: list[str] = ["*"]
+    # CORS_ORIGINS 在 .env 以逗號分隔字串設定，由 _split_cors validator 轉為 list
+    CORS_ORIGINS: str | list[str] = ["*"]
     DEFAULT_LANGUAGE: str = "zh"
 
     # 後端 VAD（faster-whisper 過濾靜音段）
@@ -51,7 +52,12 @@ class Settings(BaseSettings):
             return info.data.get("DEFAULT_LANGUAGE", "zh")
         return v
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": True}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": True,
+        "extra": "ignore",  # 忽略 .env 中未定義的欄位，避免遺留設定導致啟動失敗
+    }
 
 
 settings = Settings()
