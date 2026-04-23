@@ -87,7 +87,7 @@ async def report(req: ReportRequest) -> JSONResponse:
             facility_type=req.facility_type,
             facility_subtype=req.facility_subtype,
         )
-        return result
+        return JSONResponse(result)
     except Exception as e:
         logger.exception("LLM report error")
         return JSONResponse({"error": f"LLM 服務錯誤: {e}"}, status_code=502)
@@ -99,7 +99,7 @@ async def health() -> JSONResponse:
     if not WHISPER_CPP_URL and _stream_model is None:
         return JSONResponse({"status": "loading"}, status_code=503)
     backend = "whisper.cpp" if WHISPER_CPP_URL else "faster-whisper"
-    return {"status": "ok", "backend": backend, "model": STREAM_MODEL}
+    return JSONResponse({"status": "ok", "backend": backend, "model": STREAM_MODEL})
 
 
 # ──────────────────────────────────────────

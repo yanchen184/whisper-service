@@ -17,6 +17,7 @@ services:
     volumes:
       - ./api/data:/app/data:ro
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    restart: unless-stopped
     # GPU support: uncomment below
     # deploy:
     #   resources:
@@ -34,6 +35,7 @@ services:
         LLM_MODEL: ${LLM_MODEL:-MediaTek-Research/Breeze-2-8B-Instruct}
     ports:
       - "8001:8001"
+    restart: unless-stopped
     # GPU support: uncomment below
     # deploy:
     #   resources:
@@ -51,4 +53,5 @@ services:
       - "8081:80"
     depends_on:
       - api
+    restart: unless-stopped
 

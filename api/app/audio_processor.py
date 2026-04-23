@@ -5,11 +5,12 @@ import struct
 import wave
 from datetime import datetime
 
+from app.config import FRONTEND_VAD_RMS_THRESHOLD, FRONTEND_VAD_SILENCE_TIMEOUT_S
+
 SAMPLE_RATE: int = 16000
 CHANNELS: int = 1
 BYTES_PER_SAMPLE: int = 2
 SAMPLES_PER_FRAME: int = int(SAMPLE_RATE * 0.030)
-SPEECH_TIMEOUT_S: float = 1.0
 
 _WAV_MIN_BYTES: int = 1000
 
@@ -25,8 +26,13 @@ class AudioProcessor:
             processor.clear()
     """
 
-    def __init__(self, silence_timeout_s: float = SPEECH_TIMEOUT_S) -> None:
+    def __init__(
+        self,
+        silence_timeout_s: float = FRONTEND_VAD_SILENCE_TIMEOUT_S,
+        rms_threshold: float = FRONTEND_VAD_RMS_THRESHOLD,
+    ) -> None:
         self._silence_timeout_s = silence_timeout_s
+        self._rms_threshold = rms_threshold
         self.reset()
 
     def reset(self) -> None:
@@ -38,7 +44,7 @@ class AudioProcessor:
     def add_frame(self, frame: bytes) -> None:
         """加入一個 PCM 幀並更新語音狀態機。"""
         self._frames.append(frame)
-        is_speech = self._has_speech(frame)
+        is_speech = self._has_speech(frame, self._rms_threshold)
         if is_speech:
             self._is_speaking = True
             self._silence_start = None
@@ -72,7 +78,7 @@ class AudioProcessor:
         self._is_speaking = False
 
     @staticmethod
-    def _has_speech(frame: bytes, threshold: float = 300.0) -> bool:
+    def _has_speech(frame: bytes, threshold: float) -> bool:
         """以 RMS 能量判斷幀內是否含語音。"""
         n = len(frame) // 2
         if n == 0:

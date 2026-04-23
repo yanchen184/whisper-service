@@ -12,8 +12,13 @@ class Settings(BaseSettings):
 
     # 傳輸限制
     MAX_CHUNK_SIZE: int = 5 * 1024 * 1024  # 5 MB
-    CORS_ORIGINS: list[str] = ["*"]
+    # CORS_ORIGINS 在 .env 以逗號分隔字串設定，由 _split_cors validator 轉為 list
+    CORS_ORIGINS: str | list[str] = ["http://localhost:3000", "http://localhost:8081"]
     DEFAULT_LANGUAGE: str = "zh"
+
+    # 前端 VAD（AudioProcessor RMS 能量門檻、靜音超時）
+    FRONTEND_VAD_RMS_THRESHOLD: float = 300.0
+    FRONTEND_VAD_SILENCE_TIMEOUT_S: float = 1.0
 
     # 後端 VAD（faster-whisper 過濾靜音段）
     BACKEND_VAD_ENABLED: bool = True
@@ -50,7 +55,12 @@ class Settings(BaseSettings):
             return info.data.get("DEFAULT_LANGUAGE", "zh")
         return v
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "case_sensitive": True}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": True,
+        "extra": "ignore",  # 忽略 .env 中未定義的欄位，避免遺留設定導致啟動失敗
+    }
 
 
 settings = Settings()
@@ -62,6 +72,9 @@ STREAM_MODEL = settings.STREAM_MODEL
 MAX_CHUNK_SIZE = settings.MAX_CHUNK_SIZE
 CORS_ORIGINS = settings.CORS_ORIGINS
 DEFAULT_LANGUAGE = settings.DEFAULT_LANGUAGE
+
+FRONTEND_VAD_RMS_THRESHOLD = settings.FRONTEND_VAD_RMS_THRESHOLD
+FRONTEND_VAD_SILENCE_TIMEOUT_S = settings.FRONTEND_VAD_SILENCE_TIMEOUT_S
 
 BACKEND_VAD_ENABLED = settings.BACKEND_VAD_ENABLED
 BACKEND_VAD_THRESHOLD = settings.BACKEND_VAD_THRESHOLD
